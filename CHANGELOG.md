@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.0] - 2020-08-14
+
+- Added crop argument to Console.print
+- Added "ignore" overflow method
+- Added multiple characters per rule @hedythedev https://github.com/willmcgugan/rich/pull/207
+
+## [5.1.2] - 2020-08-10
+
+### Fixed
+
+- Further optimized pretty printing ~5X.
+
+## [5.1.1] - 2020-08-09
+
+### Fixed
+
+- Optimized pretty printing ~3X faster
+
+## [5.1.0] - 2020-08-08
+
+### Added
+
+- Added Text.cell_len
+- Added helpful message regarding unicode decoding errors https://github.com/willmcgugan/rich/issues/212
+- Added display hook with pretty.install()
+
+### Fixed
+
+- Fixed deprecation warnings re backslash https://github.com/willmcgugan/rich/issues/210
+- Fixed repr highlighting of scientific notation, e.g. 1e100
+
+### Changed
+
+- Implemented pretty printing, and removed pprintpp from dependencies
+- Optimized Text.join
+
 ## [5.0.0] - 2020-08-02
 
 ### Changed

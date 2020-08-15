@@ -102,7 +102,7 @@ class Span(NamedTuple):
 
 
 class Text(JupyterMixin):
-    r"""Text with color / style.
+    """Text with color / style.
         
         Args:
             text (str, optional): Default unstyled text. Defaults to "".
@@ -110,7 +110,7 @@ class Text(JupyterMixin):
             justify (str, optional): Justify method: "left", "center", "full", "right". Defaults to None.
             overflow (str, optional): Overflow method: "crop", "fold", "ellipsis". Defaults to None. 
             no_wrap (bool, optional): Disable text wrapping, or None for default. Defaults to None.
-            end (str, optional): Character to end text with. Defaults to "\n".
+            end (str, optional): Character to end text with. Defaults to "\\n".
             tab_size (int): Number of spaces per tab, or ``None`` to use ``console.tab_size``. Defaults to 8.
             spans (List[Span], optional). A list of predefined style spans. Defaults to None.
     """
@@ -180,6 +180,11 @@ class Text(JupyterMixin):
             return other.plain in self.plain
         return False
 
+    @property
+    def cell_len(self) -> int:
+        """Get the number of cells required to render this text."""
+        return cell_len(self.plain)
+
     @classmethod
     def from_markup(
         cls,
@@ -243,7 +248,7 @@ class Text(JupyterMixin):
         end: str = "\n",
         tab_size: int = 8,
     ) -> "Text":
-        r"""Construct a text instance by combining a sequence of strings with optional styles.
+        """Construct a text instance by combining a sequence of strings with optional styles.
         The positional arguments should be either strings, or a tuple of string + style.        
 
         Args:            
@@ -560,11 +565,32 @@ class Text(JupyterMixin):
         """
 
         new_text = self.blank_copy()
-        append = new_text.append
-        for last, line in loop_last(lines):
-            append(line)
-            if not last:
-                append(self)
+
+        def iter_text() -> Iterable["Text"]:
+            if self.plain:
+                for last, line in loop_last(lines):
+                    yield line
+                    if not last:
+                        yield self
+            else:
+                yield from lines
+
+        extend_text = new_text._text.extend
+        append_span = new_text._spans.append
+        extend_spans = new_text._spans.extend
+        offset = 0
+        _Span = Span
+
+        for text in iter_text():
+            extend_text(text._text)
+            if text.style is not None:
+                append_span(_Span(offset, offset + len(text), text.style))
+            extend_spans(
+                _Span(offset + start, offset + end, style)
+                for start, end, style in text._spans
+            )
+            offset += len(text)
+        new_text._length = offset
         return new_text
 
     def tabs_to_spaces(self, tab_size: int = None) -> "Text":
@@ -613,16 +639,17 @@ class Text(JupyterMixin):
             overflow (str, optional): Overflow method: "crop", "fold", or "ellipsis". Defaults to None, to use self.overflow.
             pad (bool, optional): Pad with spaces if the length is less than max_width. Defaults to False.
         """
-        length = cell_len(self.plain)
         _overflow = overflow or self.overflow or DEFAULT_OVERFLOW
-        if length > max_width:
-            if _overflow == "ellipsis":
-                self.plain = set_cell_size(self.plain, max_width - 1).rstrip() + "…"
-            else:
-                self.plain = set_cell_size(self.plain, max_width)
-        if pad and length < max_width:
-            spaces = max_width - length
-            self.plain = f"{self.plain}{' ' * spaces}"
+        if _overflow != "ignore":
+            length = cell_len(self.plain)
+            if length > max_width:
+                if _overflow == "ellipsis":
+                    self.plain = set_cell_size(self.plain, max_width - 1).rstrip() + "…"
+                else:
+                    self.plain = set_cell_size(self.plain, max_width)
+            if pad and length < max_width:
+                spaces = max_width - length
+                self.plain = f"{self.plain}{' ' * spaces}"
 
     def _trim_spans(self) -> None:
         """Remove or modify any spans that are over the end of the text."""
@@ -716,38 +743,58 @@ class Text(JupyterMixin):
             style (str, optional): A style name. Defaults to None.
         
         Returns:
-            text (Text): Returns self for chaining.
+            Text: Returns self for chaining.
         """
 
         if not isinstance(text, (str, Text)):
             raise TypeError("Only str or Text can be appended to Text")
 
-        if not len(text):
-            return self
-        if isinstance(text, str):
-            text = strip_control_codes(text)
-            self._text.append(text)
-            offset = len(self)
-            text_length = len(text)
-            if style is not None:
-                self._spans.append(Span(offset, offset + text_length, style))
-            self._length += text_length
-        elif isinstance(text, Text):
-            _Span = Span
-            if style is not None:
-                raise ValueError("style must not be set when appending Text instance")
+        if len(text):
+            if isinstance(text, str):
+                text = strip_control_codes(text)
+                self._text.append(text)
+                offset = len(self)
+                text_length = len(text)
+                if style is not None:
+                    self._spans.append(Span(offset, offset + text_length, style))
+                self._length += text_length
+            elif isinstance(text, Text):
+                _Span = Span
+                if style is not None:
+                    raise ValueError(
+                        "style must not be set when appending Text instance"
+                    )
 
-            text_length = self._length
-            if text.style is not None:
-                self._spans.append(
-                    _Span(text_length, text_length + len(text), text.style)
+                text_length = self._length
+                if text.style is not None:
+                    self._spans.append(
+                        _Span(text_length, text_length + len(text), text.style)
+                    )
+                self._text.append(text.plain)
+                self._spans.extend(
+                    _Span(start + text_length, end + text_length, style)
+                    for start, end, style in text._spans
                 )
-            self._text.append(text.plain)
-            self._spans.extend(
-                _Span(start + text_length, end + text_length, style)
-                for start, end, style in text._spans
-            )
-            self._length += len(text)
+                self._length += len(text)
+        return self
+
+    def append_text(self, text: "Text") -> "Text":
+        """Append another Text instance. This method is more performant that Text.append, but
+        only works for Text.
+
+        Returns:
+            Text: Returns self for chaining.
+        """
+        _Span = Span
+        text_length = self._length
+        if text.style is not None:
+            self._spans.append(_Span(text_length, text_length + len(text), text.style))
+        self._text.append(text.plain)
+        self._spans.extend(
+            _Span(start + text_length, end + text_length, style)
+            for start, end, style in text._spans
+        )
+        self._length += len(text)
         return self
 
     def copy_styles(self, text: "Text") -> None:
@@ -765,10 +812,10 @@ class Text(JupyterMixin):
         include_separator: bool = False,
         allow_blank: bool = False,
     ) -> Lines:
-        r"""Split rich text in to lines, preserving styles.
+        """Split rich text in to lines, preserving styles.
         
         Args:
-            separator (str, optional): String to split on. Defaults to "\n".
+            separator (str, optional): String to split on. Defaults to "\\n".
             include_separator (bool, optional): Include the separator in the lines. Defaults to False.
             allow_blank (bool, optional): Return a blank line if the text ends with a separator. Defaults to False.
         
@@ -893,7 +940,8 @@ class Text(JupyterMixin):
         wrap_overflow = cast(
             "OverflowMethod", overflow or self.overflow or DEFAULT_OVERFLOW
         )
-        no_wrap = pick_bool(no_wrap, self.no_wrap, False)
+        no_wrap = pick_bool(no_wrap, self.no_wrap, False) or overflow == "ignore"
+
         lines = Lines()
         for line in self.split(allow_blank=True):
             if "\t" in line:

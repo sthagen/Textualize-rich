@@ -5,7 +5,7 @@
 [![Rich blog](https://img.shields.io/badge/blog-rich%20news-yellowgreen)](https://www.willmcgugan.com/tag/rich/)
 [![Twitter Follow](https://img.shields.io/twitter/follow/willmcgugan.svg?style=social)](https://twitter.com/willmcgugan)
 
-[中文 readme](./README.cn.md)
+[中文 readme](https://github.com/willmcgugan/rich/blob/master/README.cn.md)
 
 Rich is a Python library for _rich_ text and beautiful formatting in the terminal.
 
@@ -14,6 +14,8 @@ The [Rich API](https://rich.readthedocs.io/en/latest/) makes it easy to add colo
 ![Features](https://github.com/willmcgugan/rich/raw/master/imgs/features.png)
 
 For a video introduction to Rich see [calmcode.io](https://calmcode.io/rich/introduction.html) by [@fishnets88](https://twitter.com/fishnets88).
+
+See what [people are saying about Rich](https://www.willmcgugan.com/blog/pages/post/rich-tweets/).
 
 ## Compatibility
 
@@ -40,6 +42,17 @@ print("Hello, [bold magenta]World[/bold magenta]!", ":vampire:", locals())
 ```
 
 ![Hello World](https://github.com/willmcgugan/rich/raw/master/imgs/print.png)
+
+## Rich REPL
+
+Rich can be installed in the Python REPL, so that any data structures will be pretty printed and highlighted.
+
+```python
+>>> from rich import pretty
+>>> pretty.install()
+```
+
+![REPL](https://github.com/willmcgugan/rich/raw/master/imgs/repl.png)
 
 ## Using the Console
 
@@ -141,7 +154,7 @@ Here's a simpler table example:
 
 ```python
 from rich.console import Console
-from rich.table import Column, Table
+from rich.table import Table
 
 console = Console()
 
@@ -274,14 +287,34 @@ This will produce the following output:
 
 ## Tracebacks
 
-Rich can render beautiful tracebacks which are easier to read and show more code than standard Python tracebacks. You can set Rich as the default traceback handler so all uncaught exceptions will be rendered by Rich.
+Rich can render [beautiful tracebacks](https://rich.readthedocs.io/en/latest/traceback.html) which are easier to read and show more code than standard Python tracebacks. You can set Rich as the default traceback handler so all uncaught exceptions will be rendered by Rich.
 
 Here's what it looks like on OSX (similar on Linux):
 
 ![traceback](https://github.com/willmcgugan/rich/raw/master/imgs/traceback.png)
 
-Here's what it looks like on Windows:
+## Project using Rich
 
-![traceback_windows](https://github.com/willmcgugan/rich/raw/master/imgs/traceback_windows.png)
+Here are a few projects using Rich:
 
-See the [rich traceback](https://rich.readthedocs.io/en/latest/traceback.html) documentation for the details.
+- [BrancoLab/BrainRender](https://github.com/BrancoLab/BrainRender)
+  a python package for the visualization of three dimensional neuro-anatomical data
+- [Ciphey/Ciphey](https://github.com/Ciphey/Ciphey)
+  Automated decryption tool
+- [emeryberger/scalene](https://github.com/emeryberger/scalene)
+  a high-performance, high-precision CPU and memory profiler for Python
+- [hedythedev/StarCli](https://github.com/hedythedev/starcli)
+  Browse GitHub trending projects from your command line
+- [intel/cve-bin-tool](https://github.com/intel/cve-bin-tool)
+  This tool scans for a number of common, vulnerable components (openssl, libpng, libxml2, expat and a few others) to let you know if your system includes common libraries with known vulnerabilities.
+- [nf-core/tools](https://github.com/nf)
+  Python package with helper tools for the nf-core community.-core/tools)
+- [cansarigol/pdbr](https://github.com/cansarigol/pdbr)
+  pdb + Rich library for enhanced debugging
+- [plant99/felicette](https://github.com/plant99/felicette)
+  Satellite imagery for dummies.
+- [seleniumbase/SeleniumBase](https://github.com/seleniumbase/SeleniumBase)
+  Automate & test 10x faster with Selenium & pytest. Batteries included.
+- [smacke/ffsubsync](https://github.com/smacke/ffsubsync)
+  Automagically synchronize subtitles with video.
+- +[Many more](https://github.com/willmcgugan/rich/network/dependents)!

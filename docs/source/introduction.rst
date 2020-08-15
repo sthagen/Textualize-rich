@@ -14,6 +14,9 @@ On Windows both the (ancient) cmd.exe terminal is supported and the new `Windows
 
 Rich requires Python 3.6.1 and above. Note that Python 3.6.0 is *not* supported due to lack of support for methods on NamedTuples.
 
+.. note::
+    PyCharm users will need to enable "emulate terminal" in output console option in run/debug configuration to see styled output.
+
 Installation
 ------------
 
@@ -65,3 +68,19 @@ If you would rather not shadow Python's builtin print, you can import ``rich.pri
     from rich import print as rprint
 
 Continue reading to learn about the more advanced features of Rich.
+
+Python in the REPL
+------------------
+
+Rich may be installed in the REPL so that Python data structures are automatically pretty printed with syntax highlighting. Here's how::
+
+    >>> from rich import pretty
+    >>> pretty.install() 
+    >>> ["Rich and pretty", True]
+
+You can also use this feature to try out Rich *renderables*. Here's an example::
+
+    >>> from rich.panel import Panel
+    >>> Panel.fit("[bold yellow]Hi, I'm a Panel", border_style="red")
+
+Read on to learn more about Rich renderables.

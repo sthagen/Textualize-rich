@@ -228,7 +228,7 @@ class Table(JupyterMixin):
 
     def __rich_measure__(self, console: "Console", max_width: int) -> Measurement:
         if self.width is not None:
-            max_width = min(self.width, max_width)
+            max_width = self.width
 
         if self.box:
             max_width -= len(self.columns) - 1
@@ -362,7 +362,7 @@ class Table(JupyterMixin):
 
         max_width = options.max_width
         if self.width is not None:
-            max_width = min(self.width, max_width)
+            max_width = self.width
         if self.box:
             max_width -= len(self.columns) - 1
             if self.show_edge:
@@ -431,6 +431,12 @@ class Table(JupyterMixin):
                 excess_width = table_width - max_width
                 widths = ratio_reduce(excess_width, [1] * len(widths), widths, widths)
                 table_width = sum(widths)
+
+            width_ranges = [
+                self._measure_column(console, column, width)
+                for width, column in zip(widths, columns)
+            ]
+            widths = [_range.maximum or 1 for _range in width_ranges]
 
         if table_width < max_width and self.expand:
             pad_widths = ratio_distribute(max_width - table_width, widths)
