@@ -277,12 +277,6 @@ Rich 可以渲染漂亮的回溯，比标准 Python 回溯更容易阅读，并�
 
 ![回溯](https://github.com/willmcgugan/rich/raw/master/imgs/traceback.png)
 
-下面是 Windows 上的外观：
-
-![回溯_windows](https://github.com/willmcgugan/rich/raw/master/imgs/traceback_windows.png)
-
-有关详细信息，请参见[rich 回溯](https://rich.readthedocs.io/en/latest/traceback.html)文档记述。
-
 ## 使用Rich的项目
 
 这里是一些使用Rich的项目:
@@ -307,4 +301,6 @@ Rich 可以渲染漂亮的回溯，比标准 Python 回溯更容易阅读，并�
   使用Selenium和pytest使自动化和测试速度提高10倍，包括电池
 - [smacke/ffsubsync](https://github.com/smacke/ffsubsync)
   自动将字幕与视频同步
+- [tryolabs/norfair](https://github.com/tryolabs/norfair)
+  轻量级Python库，用于向任何检测器添加实时2D对象跟踪
 - +[还有很多](https://github.com/willmcgugan/rich/network/dependents)!

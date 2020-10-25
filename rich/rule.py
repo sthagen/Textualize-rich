@@ -42,7 +42,15 @@ class Rule(JupyterMixin):
     ) -> RenderResult:
         width = options.max_width
 
-        characters = self.characters or "─"
+        # Python3.6 doesn't have an isascii method on str
+        isascii = getattr(str, "isascii", None) or (
+            lambda s: all(ord(c) < 128 for c in s)
+        )
+        characters = (
+            "-"
+            if (options.ascii_only and not isascii(self.characters))
+            else self.characters
+        )
 
         chars_len = cell_len(characters)
         if not self.title:
@@ -58,7 +66,7 @@ class Rule(JupyterMixin):
                 title_text.truncate(width - 4, overflow="ellipsis")
 
             title_text.plain = title_text.plain.replace("\n", " ")
-            title_text = title_text.tabs_to_spaces()
+            title_text.expand_tabs()
             rule_text = Text(end=self.end)
             side_width = (width - cell_len(title_text.plain)) // 2
             left = Text(characters * (side_width // chars_len + 1))
