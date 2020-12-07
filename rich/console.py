@@ -7,8 +7,10 @@ import threading
 from abc import ABC, abstractmethod
 from collections import abc
 from dataclasses import dataclass, field, replace
+from datetime import datetime
 from functools import wraps
 from getpass import getpass
+from time import monotonic
 from typing import (
     IO,
     TYPE_CHECKING,
@@ -29,7 +31,7 @@ from typing_extensions import Literal, Protocol, runtime_checkable
 from . import errors, themes
 from ._emoji_replace import _emoji_replace
 from ._log_render import LogRender
-from .align import Align, AlignValues
+from .align import Align, AlignMethod
 from .color import ColorSystem
 from .control import Control
 from .highlighter import NullHighlighter, ReprHighlighter
@@ -401,6 +403,9 @@ class Console:
         highlighter (HighlighterType, optional): Default highlighter.
         legacy_windows (bool, optional): Enable legacy Windows mode, or ``None`` to auto detect. Defaults to ``None``.
         safe_box (bool, optional): Restrict box options that don't render on legacy Windows.
+        get_datetime (Callable[[], datetime], optional): Callable that gets the current time as a datetime.datetime object (used by Console.log),
+            or None for datetime.now.
+        get_time (Callable[[], time], optional): Callable that gets the current time in seconds, default uses time.monotonic.
     """
 
     def __init__(
@@ -426,6 +431,8 @@ class Console:
         highlighter: Optional["HighlighterType"] = ReprHighlighter(),
         legacy_windows: bool = None,
         safe_box: bool = True,
+        get_datetime: Callable[[], datetime] = None,
+        get_time: Callable[[], float] = None,
         _environ: Dict[str, str] = None,
     ):
         # Copy of os.environ allows us to replace it for testing
@@ -467,6 +474,8 @@ class Console:
         )
         self.highlighter: HighlighterType = highlighter or _null_highlighter
         self.safe_box = safe_box
+        self.get_datetime = get_datetime or datetime.now
+        self.get_time = get_time or monotonic
 
         self._record_buffer_lock = threading.RLock()
         self._thread_locals = ConsoleThreadLocals(
@@ -709,8 +718,8 @@ class Console:
     def pager(
         self, pager: Pager = None, styles: bool = False, links: bool = False
     ) -> PagerContext:
-        """A context manager to display anything printed within a "pager". The pager used
-        is defined by the system and will typically support at less pressing a key to scroll.
+        """A context manager to display anything printed within a "pager". The pager application
+        is defined by the system and will typically support at least pressing a key to scroll.
 
         Args:
             pager (Pager, optional): A pager object, or None to use :class:~rich.pager.SystemPager`. Defaults to None.
@@ -937,7 +946,7 @@ class Console:
             highlight (Optional[bool], optional): Enable automatic highlighting, or ``None`` to use console default.
 
         Returns:
-            List[ConsoleRenderable]: A list of things to render.
+            List[ConsoleRenderable]: A list oxf things to render.
         """
         renderables: List[ConsoleRenderable] = []
         _append = renderables.append
@@ -948,7 +957,7 @@ class Console:
         if justify in ("left", "center", "right"):
 
             def align_append(renderable: RenderableType) -> None:
-                _append(Align(renderable, cast(AlignValues, justify)))
+                _append(Align(renderable, cast(AlignMethod, justify)))
 
             append = align_append
 
@@ -958,7 +967,7 @@ class Console:
 
         def check_text() -> None:
             if text:
-                sep_text = Text(sep, end=end)
+                sep_text = Text(sep, justify=justify, end=end)
                 append(sep_text.join(text))
                 del text[:]
 
@@ -994,16 +1003,19 @@ class Console:
         *,
         characters: str = "─",
         style: Union[str, Style] = "rule.line",
+        align: AlignMethod = "center",
     ) -> None:
         """Draw a line with optional centered title.
 
         Args:
             title (str, optional): Text to render over the rule. Defaults to "".
             characters (str, optional): Character(s) to form the line. Defaults to "─".
+            style (str, optional): Style of line. Defaults to "rule.line".
+            align (str, optional): How to align the title, one of "left", "center", or "right". Defaults to "center".
         """
         from .rule import Rule
 
-        rule = Rule(title=title, characters=characters, style=style)
+        rule = Rule(title=title, characters=characters, style=style, align=align)
         self.print(rule)
 
     def control(self, control_codes: Union["Control", str]) -> None:
@@ -1025,14 +1037,15 @@ class Console:
         highlight: bool = True,
     ) -> None:
         """Output to the terminal. This is a low-level way of writing to the terminal which unlike
-        :meth:`~rich.console.Console.print` doesn't pretty print, wrap text, nor markup, but will highlighting
-        and apply basic style.
+        :meth:`~rich.console.Console.print` won't pretty print, wrap text, or apply markup, but will
+        optionally apply highlighting and a basic style.
 
         Args:
             sep (str, optional): String to write between print data. Defaults to " ".
             end (str, optional): String to write at end of print data. Defaults to "\\n".
             style (Union[str, Style], optional): A style to apply to output. Defaults to None.
-            highlight (Optional[bool], optional): Enable automatic highlighting, or ``None`` to use console default. Defaults to ``None``.
+            highlight (Optional[bool], optional): Enable automatic highlighting, or ``None`` to use
+                console default. Defaults to ``None``.
         """
         raw_output: str = sep.join(str(_object) for _object in objects)
         self.print(
@@ -1218,6 +1231,7 @@ class Console:
                 self._log_render(
                     self,
                     renderables,
+                    log_time=self.get_datetime(),
                     path=path,
                     line_no=line_no,
                     link_path=link_path,
@@ -1274,7 +1288,7 @@ class Console:
                 self._record_buffer.extend(buffer)
         not_terminal = not self.is_terminal
         for text, style, is_control in buffer:
-            if style and not is_control:
+            if style:
                 append(
                     style.render(
                         text,
