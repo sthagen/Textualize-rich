@@ -5,12 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [9.4.0] - Unreleased
+## [9.4.0] - 2020-12-11
 
 ### Added
 
 - Added rich.live https://github.com/willmcgugan/rich/pull/382
 - Added algin parameter to Rule and Console.rule
+- Added rich.Status class and Console.status
+- Added getitem to Text
+- Added style parameter to Console.log
+
+### Changed
+
+- Table.add_row style argument now applies to entire line and not just cells
+- Added end_section parameter to Table.add_row to force a line underneath row
+
+## Fixed
+
+- Fixed suppressed traceback context https://github.com/willmcgugan/rich/issues/468
 
 ## [9.3.0] - 2020-12-1
 
@@ -32,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed redirecting of stderr in Progress
 - Fixed broken expanded tuple of one https://github.com/willmcgugan/rich/issues/445
+- Fixed traceback message with `from` exceptions
 - Fixed justify argument not working in console.log https://github.com/willmcgugan/rich/issues/460
 
 ## [9.2.0] - 2020-11-08
