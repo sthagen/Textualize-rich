@@ -41,15 +41,15 @@ from .pager import Pager, SystemPager
 from .pretty import Pretty
 from .scope import render_scope
 from .segment import Segment
-from .style import Style
+from .style import Style, StyleType
 from .styled import Styled
 from .terminal_theme import DEFAULT_TERMINAL_THEME, TerminalTheme
 from .text import Text, TextType
 from .theme import Theme, ThemeStack
 
 if TYPE_CHECKING:
-    from .status import Status
     from ._windows import WindowsConsoleFeatures
+    from .status import Status
 
 WINDOWS = platform.system() == "Windows"
 
@@ -101,7 +101,9 @@ class ConsoleOptions:
     overflow: Optional[OverflowMethod] = None
     """Overflow value override for renderable."""
     no_wrap: Optional[bool] = False
-    """"Disable wrapping for text."""
+    """Disable wrapping for text."""
+    highlight: Optional[bool] = None
+    """Highlight override for render_str."""
 
     @property
     def ascii_only(self) -> bool:
@@ -116,6 +118,7 @@ class ConsoleOptions:
         justify: JustifyMethod = None,
         overflow: OverflowMethod = None,
         no_wrap: bool = None,
+        highlight: bool = None,
     ) -> "ConsoleOptions":
         """Update values, return a copy."""
         options = replace(self)
@@ -131,6 +134,8 @@ class ConsoleOptions:
             options.overflow = overflow
         if no_wrap is not None:
             options.no_wrap = no_wrap
+        if highlight is not None:
+            options.highlight = highlight
         return options
 
 
@@ -390,10 +395,13 @@ class Console:
             either ``"standard"``, ``"256"`` or ``"truecolor"``. Leave as ``"auto"`` to autodetect.
         force_terminal (Optional[bool], optional): Enable/disable terminal control codes, or None to auto-detect terminal. Defaults to None.
         force_jupyter (Optional[bool], optional): Enable/disable Jupyter rendering, or None to auto-detect Jupyter. Defaults to None.
+        soft_wrap (Optional[bool], optional): Set soft wrap default on print method. Defaults to False.
         theme (Theme, optional): An optional style theme object, or ``None`` for default theme.
+        stderr (bool, optional): Use stderr rather than stdout if ``file `` is not specified. Defaults to False.
         file (IO, optional): A file object where the console should write to. Defaults to stdout.
         width (int, optional): The width of the terminal. Leave as default to auto-detect width.
         height (int, optional): The height of the terminal. Leave as default to auto-detect height.
+        style (StyleType, optional): Style to apply to all output, or None for no style. Defaults to None.
         record (bool, optional): Boolean to enable recording of terminal output,
             required to call :meth:`export_html` and :meth:`export_text`. Defaults to False.
         markup (bool, optional): Boolean to enable :ref:`console_markup`. Defaults to True.
@@ -418,10 +426,13 @@ class Console:
         ] = "auto",
         force_terminal: bool = None,
         force_jupyter: bool = None,
+        soft_wrap: bool = False,
         theme: Theme = None,
+        stderr: bool = False,
         file: IO[str] = None,
         width: int = None,
         height: int = None,
+        style: StyleType = None,
         tab_size: int = 8,
         record: bool = False,
         markup: bool = True,
@@ -444,6 +455,7 @@ class Console:
         if self.is_jupyter:
             width = width or 93
             height = height or 100
+        self.soft_wrap = soft_wrap
         self._width = width
         self._height = height
         self.tab_size = tab_size
@@ -459,7 +471,8 @@ class Console:
 
         self._color_system: Optional[ColorSystem]
         self._force_terminal = force_terminal
-        self.file = file or sys.stdout
+        self._file = file
+        self.stderr = stderr
 
         if color_system is None:
             self._color_system = None
@@ -478,6 +491,7 @@ class Console:
         self.safe_box = safe_box
         self.get_datetime = get_datetime or datetime.now
         self.get_time = get_time or monotonic
+        self.style = style
 
         self._record_buffer_lock = threading.RLock()
         self._thread_locals = ConsoleThreadLocals(
@@ -488,6 +502,18 @@ class Console:
 
     def __repr__(self) -> str:
         return f"<console width={self.width} {str(self._color_system)}>"
+
+    @property
+    def file(self) -> IO[str]:
+        """Get the file object to write to."""
+        file = self._file or (sys.stderr if self.stderr else sys.stdout)
+        file = getattr(file, "rich_proxied_file", file)
+        return file
+
+    @file.setter
+    def file(self, new_file: IO[str]) -> None:
+        """Set a new file object."""
+        self._file = new_file
 
     @property
     def _buffer(self) -> List[Segment]:
@@ -677,7 +703,16 @@ class Console:
         if self.is_dumb_terminal:
             return ConsoleDimensions(80, 25)
 
-        width, height = shutil.get_terminal_size()
+        width: Optional[int] = None
+        height: Optional[int] = None
+        if WINDOWS:  # pragma: no cover
+            width, height = shutil.get_terminal_size()
+        else:
+            try:
+                width, height = os.get_terminal_size(sys.stdin.fileno())
+            except (AttributeError, ValueError, OSError):
+                pass
+
         # get_terminal_size can report 0, 0 if run from pseudo-terminal
         width = width or 80
         height = height or 25
@@ -829,7 +864,9 @@ class Console:
         if isinstance(renderable, ConsoleRenderable):
             render_iterable = renderable.__rich_console__(self, _options)
         elif isinstance(renderable, str):
-            yield from self.render(self.render_str(renderable), _options)
+            yield from self.render(
+                self.render_str(renderable, highlight=_options.highlight), _options
+            )
             return
         else:
             raise errors.NotRenderableError(
@@ -891,6 +928,7 @@ class Console:
         overflow: OverflowMethod = None,
         emoji: bool = None,
         markup: bool = None,
+        highlight: bool = None,
         highlighter: HighlighterType = None,
     ) -> "Text":
         """Convert a string to a Text instance. This is is called automatically if
@@ -903,6 +941,7 @@ class Console:
             overflow (str, optional): Overflow method: "crop", "fold", or "ellipsis". Defaults to ``None``.
             emoji (Optional[bool], optional): Enable emoji, or ``None`` to use Console default.
             markup (Optional[bool], optional): Enable markup, or ``None`` to use Console default.
+            highlight (Optional[bool], optional): Enable highlighting, or ``None`` to use Console default.
             highlighter (HighlighterType, optional): Optional highlighter to apply.
         Returns:
             ConsoleRenderable: Renderable object.
@@ -910,6 +949,7 @@ class Console:
         """
         emoji_enabled = emoji or (emoji is None and self._emoji)
         markup_enabled = markup or (markup is None and self._markup)
+        highlight_enabled = highlight or (highlight is None and self._highlight)
 
         if markup_enabled:
             rich_text = render_markup(text, style=style, emoji=emoji_enabled)
@@ -923,8 +963,9 @@ class Console:
                 style=style,
             )
 
-        if highlighter is not None:
-            highlight_text = highlighter(str(rich_text))
+        _highlighter = (highlighter or self.highlighter) if highlight_enabled else None
+        if _highlighter is not None:
+            highlight_text = _highlighter(str(rich_text))
             highlight_text.copy_styles(rich_text)
             return highlight_text
 
@@ -1013,10 +1054,7 @@ class Console:
             if isinstance(renderable, str):
                 append_text(
                     self.render_str(
-                        renderable,
-                        emoji=emoji,
-                        markup=markup,
-                        highlighter=_highlighter,
+                        renderable, emoji=emoji, markup=markup, highlighter=_highlighter
                     )
                 )
             elif isinstance(renderable, ConsoleRenderable):
@@ -1029,6 +1067,10 @@ class Console:
                 append_text(_highlighter(str(renderable)))
 
         check_text()
+
+        if self.style is not None:
+            style = self.get_style(self.style)
+            renderables = [Styled(renderable, style) for renderable in renderables]
 
         return renderables
 
@@ -1069,7 +1111,7 @@ class Console:
         sep=" ",
         end="\n",
         style: Union[str, Style] = None,
-        highlight: bool = True,
+        highlight: bool = None,
     ) -> None:
         """Output to the terminal. This is a low-level way of writing to the terminal which unlike
         :meth:`~rich.console.Console.print` won't pretty print, wrap text, or apply markup, but will
@@ -1109,7 +1151,7 @@ class Console:
         highlight: bool = None,
         width: int = None,
         crop: bool = True,
-        soft_wrap: bool = False,
+        soft_wrap: bool = None,
     ) -> None:
         """Print to the console.
 
@@ -1126,12 +1168,15 @@ class Console:
             highlight (Optional[bool], optional): Enable automatic highlighting, or ``None`` to use console default. Defaults to ``None``.
             width (Optional[int], optional): Width of output, or ``None`` to auto-detect. Defaults to ``None``.
             crop (Optional[bool], optional): Crop output to width of terminal. Defaults to True.
-            soft_wrap (bool, optional): Enable soft wrap mode which disables word wrapping and cropping. Defaults to False.
+            soft_wrap (bool, optional): Enable soft wrap mode which disables word wrapping and cropping of text or None for
+                Console default. Defaults to ``None``.
         """
         if not objects:
             self.line()
             return
 
+        if soft_wrap is None:
+            soft_wrap = self.soft_wrap
         if soft_wrap:
             if no_wrap is None:
                 no_wrap = True
@@ -1152,7 +1197,10 @@ class Console:
             for hook in self._render_hooks:
                 renderables = hook.process_renderables(renderables)
             render_options = self.options.update(
-                justify=justify, overflow=overflow, width=width, no_wrap=no_wrap
+                justify=justify,
+                overflow=overflow,
+                width=min(width, self.width) if width else None,
+                no_wrap=no_wrap,
             )
             new_segments: List[Segment] = []
             extend = new_segments.extend

@@ -5,7 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [9.4.0] - 2020-12-11
+## [9.6.0] - 2020-12-30
+
+### Changed
+
+- MarkupError exception raise from None to omit internal exception
+- Factored out RichHandler.render and RichHandler.render_message for easier extending
+- Display pretty printed value in rich.inspect
+
+### Added
+
+- Added Progress.TimeElapsedColumn
+- Added IPython support to pretty.install
+
+### Fixed
+
+- Fixed display of locals in Traceback for stdin
+
+## [9.5.1] - 2020-12-19
+
+### Fixed
+
+- Fixed terminal size detection on Windows https://github.com/willmcgugan/rich/issues/836
+- Fixed hex number highlighting
+
+## [9.5.0] - 2020-12-18
+
+### Changed
+
+- If file is not specified on Console then the Console.file will return the current sys.stdout. Prior to 9.5.0 sys.stdout was cached on the Console, which could break code that wrapped sys.stdout after the Console was constructed.
+- Changed `Color.__str__` to not include ansi codes
+- Changed Console.size to get the terminal dimensions via sys.stdin. This means that if you set file to be an io.StringIO file then the width will be set to the current terminal dimensions and not a default of 80.
+
+### Added
+
+- Added stderr parameter to Console
+- Added rich.reconfigure
+- Added `Color.__rich__`
+- Added Console.soft_wrap
+- Added Console.style parameter
+- Added Table.highlight parameter to enable highlighting of cells
+- Added Panel.highlight parameter to enable highlighting of panel title
+- Added highlight to ConsoleOptions
+
+### Fixed
+
+- Fixed double output in rich.live https://github.com/willmcgugan/rich/issues/485
+- Fixed Console.out highlighting not reflecting defaults https://github.com/willmcgugan/rich/issues/827
+- FileProxy now raises TypeError for empty non-str arguments https://github.com/willmcgugan/rich/issues/828
+
+## [9.4.0] - 2020-12-12
 
 ### Added
 
@@ -14,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added rich.Status class and Console.status
 - Added getitem to Text
 - Added style parameter to Console.log
+- Added rich.diagnose command
 
 ### Changed
 
