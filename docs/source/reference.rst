@@ -35,4 +35,5 @@ Reference
    reference/text.rst
    reference/theme.rst
    reference/traceback.rst
-   references/abc.rst
+   reference/tree.rst
+   reference/abc.rst
