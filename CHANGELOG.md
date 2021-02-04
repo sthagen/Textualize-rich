@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.10.0] - 2021-01-27
+
+### Changed
+
+- Some optimizations for Text
+- Further optimized Tracebacks by not tokenizing code more that necessary
+- Table Column.header_style and Column.footer_style are now added to Table header/footer style
+
+## [9.9.0] - 2021-01-23
+
+### Changed
+
+- Extended Windows palette to 16 colors
+- Modified windows palette to Windows 10 colors
+- Change regex for attrib_name to be more performant
+- Optimized traceback generation
+
+### Fixed
+
+- Fix double line tree guides on Windows
+- Fixed Tracebacks ignoring initial blank lines
+- Partial fix for tracebacks not finding source after chdir
+
+### Added
+
+- Added post_style argument to Segment.apply_style
+
+## [9.8.2] - 2021-01-15
+
+### Fixed
+
+- Fixed deadlock in live https://github.com/willmcgugan/rich/issues/927
+
+## [9.8.1] - 2021-01-13
+
+### Fixed
+
+- Fixed rich.inspect failing with attributes that claim to be callable but aren't https://github.com/willmcgugan/rich/issues/916
+
+## [9.8.0] - 2021-01-11
+
+### Added
+
+- Added **rich_measure** for tree
+- Added rich.align.VerticalCenter
+
+### Changed
+
+- The `style` argument on Align now applies to background only
+- Changed display of progress bars in no_color mode for clarity
+- Console property `size` will fall back to getting the terminal size of stdout it stdin fails, this allows size to be correctly determined when piping
+
+### Fixed
+
+- Fixed panel cropping when shrunk too bar
+- Allow passing markdown over STDIN when using `python -m rich.markdown`
+- Fix printing MagicMock.mock_calls https://github.com/willmcgugan/rich/issues/903
+
 ## [9.7.0] - 2021-01-09
 
 ### Added
@@ -18,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed markup escaping edge case https://github.com/willmcgugan/rich/issues/878
 - Double tag escape, i.e. `"\\[foo]"` results in a backslash plus `[foo]` tag
+- Fixed header_style not applying to headers in positional args https://github.com/willmcgugan/rich/issues/953
 
 ## [9.6.1] - 2020-12-31
 

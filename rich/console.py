@@ -200,7 +200,7 @@ class Capture:
 
 
 class ThemeContext:
-    """A context manager to use a temporary theme. See :meth:`~rich.console.Console.theme` for usage."""
+    """A context manager to use a temporary theme. See :meth:`~rich.console.Console.use_theme` for usage."""
 
     def __init__(self, console: "Console", theme: Theme, inherit: bool = True) -> None:
         self.console = console
@@ -397,12 +397,13 @@ class Console:
         force_jupyter (Optional[bool], optional): Enable/disable Jupyter rendering, or None to auto-detect Jupyter. Defaults to None.
         soft_wrap (Optional[bool], optional): Set soft wrap default on print method. Defaults to False.
         theme (Theme, optional): An optional style theme object, or ``None`` for default theme.
-        stderr (bool, optional): Use stderr rather than stdout if ``file `` is not specified. Defaults to False.
+        stderr (bool, optional): Use stderr rather than stdout if ``file`` is not specified. Defaults to False.
         file (IO, optional): A file object where the console should write to. Defaults to stdout.
         width (int, optional): The width of the terminal. Leave as default to auto-detect width.
         height (int, optional): The height of the terminal. Leave as default to auto-detect height.
         style (StyleType, optional): Style to apply to all output, or None for no style. Defaults to None.
         no_color (Optional[bool], optional): Enabled no color mode, or None to auto detect. Defaults to None.
+        tab_size (int, optional): Number of spaces used to replace a tab character. Defaults to 8.
         record (bool, optional): Boolean to enable recording of terminal output,
             required to call :meth:`export_html` and :meth:`export_text`. Defaults to False.
         markup (bool, optional): Boolean to enable :ref:`console_markup`. Defaults to True.
@@ -716,7 +717,10 @@ class Console:
             try:
                 width, height = os.get_terminal_size(sys.stdin.fileno())
             except (AttributeError, ValueError, OSError):
-                pass
+                try:
+                    width, height = os.get_terminal_size(sys.stdout.fileno())
+                except (AttributeError, ValueError, OSError):
+                    pass
 
         # get_terminal_size can report 0, 0 if run from pseudo-terminal
         width = width or 80
@@ -803,6 +807,7 @@ class Console:
     def status(
         self,
         status: RenderableType,
+        *,
         spinner: str = "dots",
         spinner_style: str = "status.spinner",
         speed: float = 1.0,
@@ -1015,19 +1020,19 @@ class Console:
         markup: bool = None,
         highlight: bool = None,
     ) -> List[ConsoleRenderable]:
-        """Combined a number of renderables and text in to one renderable.
+        """Combine a number of renderables and text into one renderable.
 
         Args:
             objects (Iterable[Any]): Anything that Rich can render.
-            sep (str, optional): String to write between print data. Defaults to " ".
-            end (str, optional): String to write at end of print data. Defaults to "\\n".
+            sep (str): String to write between print data.
+            end (str): String to write at end of print data.
             justify (str, optional): One of "left", "right", "center", or "full". Defaults to ``None``.
             emoji (Optional[bool], optional): Enable emoji code, or ``None`` to use console default.
             markup (Optional[bool], optional): Enable markup, or ``None`` to use console default.
             highlight (Optional[bool], optional): Enable automatic highlighting, or ``None`` to use console default.
 
         Returns:
-            List[ConsoleRenderable]: A list oxf things to render.
+            List[ConsoleRenderable]: A list of things to render.
         """
         renderables: List[ConsoleRenderable] = []
         _append = renderables.append
@@ -1053,6 +1058,12 @@ class Console:
                 del text[:]
 
         for renderable in objects:
+            # I promise this is sane
+            # This detects an object which claims to have all attributes, such as MagicMock.mock_calls
+            if hasattr(
+                renderable, "jwevpw_eors4dfo6mwo345ermk7kdnfnwerwer"
+            ):  # pragma: no cover
+                renderable = repr(renderable)
             rich_cast = getattr(renderable, "__rich__", None)
             if rich_cast:
                 renderable = rich_cast()
@@ -1124,7 +1135,7 @@ class Console:
 
         Args:
             sep (str, optional): String to write between print data. Defaults to " ".
-            end (str, optional): String to write at end of print data. Defaults to "\\n".
+            end (str, optional): String to write at end of print data. Defaults to "\\\\n".
             style (Union[str, Style], optional): A style to apply to output. Defaults to None.
             highlight (Optional[bool], optional): Enable automatic highlighting, or ``None`` to use
                 console default. Defaults to ``None``.
@@ -1163,7 +1174,7 @@ class Console:
         Args:
             objects (positional args): Objects to log to the terminal.
             sep (str, optional): String to write between print data. Defaults to " ".
-            end (str, optional): String to write at end of print data. Defaults to "\\n".
+            end (str, optional): String to write at end of print data. Defaults to "\\\\n".
             style (Union[str, Style], optional): A style to apply to output. Defaults to None.
             justify (str, optional): Justify method: "default", "left", "right", "center", or "full". Defaults to ``None``.
             overflow (str, optional): Overflow method: "ignore", "crop", "fold", or "ellipsis". Defaults to None.
@@ -1202,7 +1213,7 @@ class Console:
             for hook in self._render_hooks:
                 renderables = hook.process_renderables(renderables)
             render_options = self.options.update(
-                justify=justify,
+                justify="default",
                 overflow=overflow,
                 width=min(width, self.width) if width else None,
                 no_wrap=no_wrap,
@@ -1276,7 +1287,7 @@ class Console:
         Args:
             objects (positional args): Objects to log to the terminal.
             sep (str, optional): String to write between print data. Defaults to " ".
-            end (str, optional): String to write at end of print data. Defaults to "\\n".
+            end (str, optional): String to write at end of print data. Defaults to "\\\\n".
             style (Union[str, Style], optional): A style to apply to output. Defaults to None.
             justify (str, optional): One of "left", "right", "center", or "full". Defaults to ``None``.
             overflow (str, optional): Overflow method: "crop", "fold", or "ellipsis". Defaults to None.
