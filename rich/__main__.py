@@ -227,3 +227,51 @@ if __name__ == "__main__":  # pragma: no cover
         print(line)
 
     print(f"rendered in {taken}ms")
+
+    from rich.panel import Panel
+
+    console = Console()
+
+    sponsor_message = Table.grid(padding=1)
+    sponsor_message.add_column(style="green", justify="right")
+    sponsor_message.add_column(no_wrap=True)
+    sponsor_message.add_row(
+        "Sponsor me",
+        "[u blue link=https://github.com/sponsors/willmcgugan]https://github.com/sponsors/willmcgugan",
+    )
+    sponsor_message.add_row(
+        "Buy me a :coffee:",
+        "[u blue link=https://ko-fi.com/willmcgugan]https://ko-fi.com/willmcgugan",
+    )
+    sponsor_message.add_row(
+        "Twitter",
+        "[u blue link=https://twitter.com/willmcgugan]https://twitter.com/willmcgugan",
+    )
+    sponsor_message.add_row(
+        "Blog", "[u blue link=https://www.willmcgugan.com]https://www.willmcgugan.com"
+    )
+
+    intro_message = Text.from_markup(
+        """\
+It takes a lot of time to develop Rich and to provide support.
+
+Consider supporting my work via Github Sponsors (ask your company / organization), or buy me a coffee to say thanks.
+
+- Will McGugan"""
+    )
+
+    message = Table.grid(padding=2)
+    message.add_column()
+    message.add_column(no_wrap=True)
+    message.add_row(intro_message, sponsor_message)
+
+    console.print(
+        Panel.fit(
+            message,
+            box=box.ROUNDED,
+            padding=(1, 2),
+            title="[b red]Thanks for trying out Rich!",
+            border_style="bright_blue",
+        ),
+        justify="center",
+    )

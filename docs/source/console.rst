@@ -298,6 +298,55 @@ Since the default pager on most platforms don't support color, Rich will strip c
 .. note::
     Rich will use the ``PAGER`` environment variable to get the pager command. On Linux and macOS you can set this to ``less -r`` to enable paging with ANSI styles.
 
+Alternate screen
+----------------
+
+.. warning::
+    This feature is currently experimental. You might want to wait before using it in production.
+
+Terminals support an 'alternate screen' mode which is separate from the regular terminal and allows for full-screen applications that leave your stream of input and commands intact. Rich supports this mode via the :meth:`~rich.console.Console.set_alt_screen` method, although it is recommended that you use :meth:`~rich.console.Console.screen` which returns a context manager that disables alternate mode on exit.
+
+Here's an example of an alternate screen::
+
+    from time import sleep
+    from rich.console import Console
+
+    console = Console()
+    with console.screen():
+        console.print(locals())
+        sleep(5)
+        
+The above code will display a pretty printed dictionary on the alternate screen before returning to the command prompt after 5 seconds.
+
+You can also provide a renderable to :meth:`~rich.console.Console.screen` which will be displayed in the alternate screen when you call :meth:`~rich.ScreenContext.update`. 
+
+Here's an example::
+
+    from time import sleep
+
+    from rich.console import Console
+    from rich.align import Align
+    from rich.text import Text
+    from rich.panel import Panel
+
+    console = Console()
+
+    with console.screen(style="bold white on red") as screen:
+        for count in range(5, 0, -1):
+            text = Align.center(
+                Text.from_markup(f"[blink]Don't Panic![/blink]\n{count}", justify="center"),
+                vertical="middle",
+            )
+            screen.update(Panel(text))
+            sleep(1)
+
+Updating the screen with a renderable allows Rich to crop the contents to fit the screen without scrolling.
+
+For a more powerful way of building full screen interfaces with Rich, see :ref:`live`.
+
+
+.. note::
+    If you ever find yourself stuck in alternate mode after exiting Python code, type ``reset`` in the terminal
 
 Terminal detection
 ------------------
@@ -306,6 +355,13 @@ If Rich detects that it is not writing to a terminal it will strip control codes
 
 Letting Rich auto-detect terminals is useful as it will write plain text when you pipe output to a file or other application.
 
+Interactive mode
+~~~~~~~~~~~~~~~~
+
+Rich will remove animations such as progress bars and status indicators when not writing to a terminal as you probably don't want to write these out to a text file (for example). You can override this behavior by setting the ``force_interactive`` argument on the constructor. Set it to True to enable animations or False to disable them.
+
+.. note::
+    Some CI systems support ANSI color and style but not anything that moves the cursor or selectively refreshes parts of the terminal. For these you might want to set ``force_terminal`` to ``True`` and ``force_interactve`` to ``False``.
 
 Environment variables
 ---------------------

@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass, field
 from traceback import walk_tb
 from types import TracebackType
-from typing import Callable, Dict, Iterable, List, Optional, Type
+from typing import Any, Callable, Dict, Iterable, List, Optional, Type
 
 from pygments.lexers import guess_lexer_for_filename
 from pygments.token import Comment, Keyword, Name, Number, Operator, String
@@ -72,7 +72,7 @@ def install(
     def excepthook(
         type_: Type[BaseException],
         value: BaseException,
-        traceback: TracebackType,
+        traceback: Optional[TracebackType],
     ) -> None:
         traceback_console.print(
             Traceback.from_exception(
@@ -88,9 +88,55 @@ def install(
             )
         )
 
-    old_excepthook = sys.excepthook
-    sys.excepthook = excepthook
-    return old_excepthook
+    def ipy_excepthook_closure(ip) -> None:  # pragma: no cover
+        tb_data = {}  # store information about showtraceback call
+        default_showtraceback = ip.showtraceback  # keep reference of default traceback
+
+        def ipy_show_traceback(*args, **kwargs) -> None:
+            """wrap the default ip.showtraceback to store info for ip._showtraceback"""
+            nonlocal tb_data
+            tb_data = kwargs
+            default_showtraceback(*args, **kwargs)
+
+        def ipy_display_traceback(*args, is_syntax: bool = False, **kwargs) -> None:
+            """Internally called traceback from ip._showtraceback"""
+            nonlocal tb_data
+            exc_tuple = ip._get_exc_info()
+
+            # do not display trace on syntax error
+            tb: Optional[TracebackType] = None if is_syntax else exc_tuple[2]
+
+            # determine correct tb_offset
+            compiled = tb_data.get("running_compiled_code", False)
+            tb_offset = tb_data.get("tb_offset", 1 if compiled else 0)
+            # remove ipython internal frames from trace with tb_offset
+            for _ in range(tb_offset):
+                if tb is None:
+                    break
+                tb = tb.tb_next
+
+            excepthook(exc_tuple[0], exc_tuple[1], tb)
+            tb_data = {}  # clear data upon usage
+
+        # replace _showtraceback instead of showtraceback to allow ipython features such as debugging to work
+        # this is also what the ipython docs recommends to modify when subclassing InteractiveShell
+        ip._showtraceback = ipy_display_traceback
+        # add wrapper to capture tb_data
+        ip.showtraceback = ipy_show_traceback
+        ip.showsyntaxerror = lambda *args, **kwargs: ipy_display_traceback(
+            *args, is_syntax=True, **kwargs
+        )
+
+    try:  # pragma: no cover
+        # if wihin ipython, use customized traceback
+        ip = get_ipython()  # type: ignore
+        ipy_excepthook_closure(ip)
+        return sys.excepthook
+    except Exception:
+        # otherwise use default system hook
+        old_excepthook = sys.excepthook
+        sys.excepthook = excepthook
+        return old_excepthook
 
 
 @dataclass
@@ -146,7 +192,13 @@ class Traceback:
         locals_max_string (int, optional): Maximum length of string before truncating, or None to disable. Defaults to 80.
     """
 
-    LEXERS = {".py": "python", ".pxd": "cython", ".pyx": "cython", ".pxi": "pyrex"}
+    LEXERS = {
+        "": "text",
+        ".py": "python",
+        ".pxd": "cython",
+        ".pyx": "cython",
+        ".pxi": "pyrex",
+    }
 
     def __init__(
         self,
@@ -258,10 +310,17 @@ class Traceback:
 
         from rich import _IMPORT_CWD
 
+        def safe_str(_object: Any) -> str:
+            """Don't allow exceptions from __str__ to propegate."""
+            try:
+                return str(_object)
+            except Exception:
+                return "<exception str() failed>"
+
         while True:
             stack = Stack(
-                exc_type=str(exc_type.__name__),
-                exc_value=str(exc_value),
+                exc_type=safe_str(exc_type.__name__),
+                exc_value=safe_str(exc_value),
                 is_cause=is_cause,
             )
 
@@ -426,6 +485,14 @@ class Traceback:
     @classmethod
     def _guess_lexer(cls, filename: str, code: str) -> str:
         ext = os.path.splitext(filename)[-1]
+        if not ext:
+            # No extension, look at first line to see if it is a hashbang
+            # Note, this is an educated guess and not a guarantee
+            # If it fails, the only downside is that the code is highlighted strangely
+            new_line_index = code.index("\n")
+            first_line = code[:new_line_index] if new_line_index != -1 else code
+            if first_line.startswith("#!") and "python" in first_line.lower():
+                return "python"
         lexer_name = (
             cls.LEXERS.get(ext) or guess_lexer_for_filename(filename, code).name
         )

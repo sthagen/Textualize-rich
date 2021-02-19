@@ -1,6 +1,6 @@
 import pytest
 from rich.live_render import LiveRender
-from rich.console import Console, ConsoleOptions
+from rich.console import Console, ConsoleDimensions, ConsoleOptions
 from rich.style import Style
 from rich.segment import Segment
 
@@ -30,6 +30,7 @@ def test_restore_cursor(live_render):
 
 def test_rich_console(live_render):
     options = ConsoleOptions(
+        ConsoleDimensions(80, 25),
         legacy_windows=False,
         min_width=10,
         max_width=20,
@@ -37,7 +38,7 @@ def test_rich_console(live_render):
         encoding="utf-8",
     )
     rich_console = live_render.__rich_console__(Console(), options)
-    assert [Segment.control("my string", Style.parse("none"))] == list(rich_console)
+    assert [Segment("my string", Style.parse("none"))] == list(rich_console)
     live_render.style = "red"
     rich_console = live_render.__rich_console__(Console(), options)
-    assert [Segment.control("my string", Style.parse("red"))] == list(rich_console)
+    assert [Segment("my string", Style.parse("red"))] == list(rich_console)

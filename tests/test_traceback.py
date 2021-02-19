@@ -81,6 +81,19 @@ def test_print_exception():
     assert "ZeroDivisionError" in exception_text
 
 
+def test_print_exception_locals():
+    console = Console(width=100, file=io.StringIO())
+    try:
+        1 / 0
+    except Exception:
+        console.print_exception(show_locals=True)
+    exception_text = console.file.getvalue()
+    print(exception_text)
+    assert "ZeroDivisionError" in exception_text
+    assert "locals" in exception_text
+    assert "console = <console width=100 None>" in exception_text
+
+
 def test_syntax_error():
     console = Console(width=100, file=io.StringIO())
     try:
@@ -164,6 +177,28 @@ def test_filename_not_a_file():
         console.print_exception()
     exception_text = console.file.getvalue()
     assert "string" in exception_text
+
+
+def test_broken_str():
+    class BrokenStr(Exception):
+        def __str__(self):
+            1 / 0
+
+    console = Console(width=100, file=io.StringIO())
+    try:
+        raise BrokenStr()
+    except Exception:
+        console.print_exception()
+    result = console.file.getvalue()
+    print(result)
+    assert "<exception str() failed>" in result
+
+
+def test_guess_lexer():
+    assert Traceback._guess_lexer("foo.py", "code") == "python"
+    code_python = "#! usr/bin/env python\nimport this"
+    assert Traceback._guess_lexer("foo", code_python) == "python"
+    assert Traceback._guess_lexer("foo", "foo\nbnar") == "text"
 
 
 if __name__ == "__main__":  # pragma: no cover
