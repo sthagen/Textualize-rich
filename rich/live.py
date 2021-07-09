@@ -1,6 +1,7 @@
 import sys
 from threading import Event, RLock, Thread
-from typing import IO, Any, Callable, List, Optional
+from types import TracebackType
+from typing import IO, Any, Callable, List, Optional, TextIO, Type, cast
 
 from . import get_console
 from .console import Console, ConsoleRenderable, RenderableType, RenderHook
@@ -49,9 +50,9 @@ class Live(JupyterMixin, RenderHook):
 
     def __init__(
         self,
-        renderable: RenderableType = None,
+        renderable: Optional[RenderableType] = None,
         *,
-        console: Console = None,
+        console: Optional[Console] = None,
         screen: bool = False,
         auto_refresh: bool = True,
         refresh_per_second: float = 4,
@@ -59,7 +60,7 @@ class Live(JupyterMixin, RenderHook):
         redirect_stdout: bool = True,
         redirect_stderr: bool = True,
         vertical_overflow: VerticalOverflowMethod = "ellipsis",
-        get_renderable: Callable[[], RenderableType] = None,
+        get_renderable: Optional[Callable[[], RenderableType]] = None,
     ) -> None:
         assert refresh_per_second > 0, "refresh_per_second must be > 0"
         self._renderable = renderable
@@ -100,7 +101,7 @@ class Live(JupyterMixin, RenderHook):
         )
         return renderable or ""
 
-    def start(self, refresh=False) -> None:
+    def start(self, refresh: bool = False) -> None:
         """Start live rendering display.
 
         Args:
@@ -163,26 +164,31 @@ class Live(JupyterMixin, RenderHook):
         self.start(refresh=self._renderable is not None)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         self.stop()
 
-    def _enable_redirect_io(self):
+    def _enable_redirect_io(self) -> None:
         """Enable redirecting of stdout / stderr."""
         if self.console.is_terminal:
-            if self._redirect_stdout and not isinstance(sys.stdout, FileProxy):  # type: ignore
+            if self._redirect_stdout and not isinstance(sys.stdout, FileProxy):
                 self._restore_stdout = sys.stdout
-                sys.stdout = FileProxy(self.console, sys.stdout)
-            if self._redirect_stderr and not isinstance(sys.stderr, FileProxy):  # type: ignore
+                sys.stdout = cast("TextIO", FileProxy(self.console, sys.stdout))
+            if self._redirect_stderr and not isinstance(sys.stderr, FileProxy):
                 self._restore_stderr = sys.stderr
-                sys.stderr = FileProxy(self.console, sys.stderr)
+                sys.stderr = cast("TextIO", FileProxy(self.console, sys.stderr))
 
-    def _disable_redirect_io(self):
+    def _disable_redirect_io(self) -> None:
         """Disable redirecting of stdout / stderr."""
         if self._restore_stdout:
-            sys.stdout = self._restore_stdout
+            sys.stdout = cast("TextIO", self._restore_stdout)
             self._restore_stdout = None
         if self._restore_stderr:
-            sys.stderr = self._restore_stderr
+            sys.stderr = cast("TextIO", self._restore_stderr)
             self._restore_stderr = None
 
     @property

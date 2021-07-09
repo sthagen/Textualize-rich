@@ -40,14 +40,14 @@ LOCALS_MAX_STRING = 80
 
 def install(
     *,
-    console: Console = None,
+    console: Optional[Console] = None,
     width: Optional[int] = 100,
     extra_lines: int = 3,
     theme: Optional[str] = None,
     word_wrap: bool = False,
     show_locals: bool = False,
     indent_guides: bool = True,
-) -> Callable:
+) -> Callable[[Type[BaseException], BaseException, Optional[TracebackType]], Any]:
     """Install a rich traceback handler.
 
     Once installed, any tracebacks will be printed with syntax highlighting and rich formatting.
@@ -88,17 +88,19 @@ def install(
             )
         )
 
-    def ipy_excepthook_closure(ip) -> None:  # pragma: no cover
+    def ipy_excepthook_closure(ip: Any) -> None:  # pragma: no cover
         tb_data = {}  # store information about showtraceback call
         default_showtraceback = ip.showtraceback  # keep reference of default traceback
 
-        def ipy_show_traceback(*args, **kwargs) -> None:
+        def ipy_show_traceback(*args: Any, **kwargs: Any) -> None:
             """wrap the default ip.showtraceback to store info for ip._showtraceback"""
             nonlocal tb_data
             tb_data = kwargs
             default_showtraceback(*args, **kwargs)
 
-        def ipy_display_traceback(*args, is_syntax: bool = False, **kwargs) -> None:
+        def ipy_display_traceback(
+            *args: Any, is_syntax: bool = False, **kwargs: Any
+        ) -> None:
             """Internally called traceback from ip._showtraceback"""
             nonlocal tb_data
             exc_tuple = ip._get_exc_info()
@@ -131,12 +133,12 @@ def install(
         # if wihin ipython, use customized traceback
         ip = get_ipython()  # type: ignore
         ipy_excepthook_closure(ip)
-        return sys.excepthook
+        return sys.excepthook  # type: ignore # more strict signature that mypy can't interpret
     except Exception:
         # otherwise use default system hook
         old_excepthook = sys.excepthook
         sys.excepthook = excepthook
-        return old_excepthook
+        return old_excepthook  # type: ignore # more strict signature that mypy can't interpret
 
 
 @dataclass
@@ -202,7 +204,7 @@ class Traceback:
 
     def __init__(
         self,
-        trace: Trace = None,
+        trace: Optional[Trace] = None,
         width: Optional[int] = 100,
         extra_lines: int = 3,
         theme: Optional[str] = None,
@@ -234,7 +236,7 @@ class Traceback:
     @classmethod
     def from_exception(
         cls,
-        exc_type: Type,
+        exc_type: Type[Any],
         exc_value: BaseException,
         traceback: Optional[TracebackType],
         width: Optional[int] = 100,
@@ -444,11 +446,13 @@ class Traceback:
                     (f"{stack.exc_type}: ", "traceback.exc_type"),
                     highlighter(stack.syntax_error.msg),
                 )
-            else:
+            elif stack.exc_value:
                 yield Text.assemble(
                     (f"{stack.exc_type}: ", "traceback.exc_type"),
                     highlighter(stack.exc_value),
                 )
+            else:
+                yield Text.assemble((f"{stack.exc_type}", "traceback.exc_type"))
 
             if not last:
                 if stack.is_cause:
@@ -591,11 +595,11 @@ if __name__ == "__main__":  # pragma: no cover
     console = Console()
     import sys
 
-    def bar(a):  # 这是对亚洲语言支持的测试。面对模棱两可的想法，拒绝猜测的诱惑
+    def bar(a: Any) -> None:  # 这是对亚洲语言支持的测试。面对模棱两可的想法，拒绝猜测的诱惑
         one = 1
         print(one / a)
 
-    def foo(a):
+    def foo(a: Any) -> None:
 
         zed = {
             "characters": {
@@ -608,7 +612,7 @@ if __name__ == "__main__":  # pragma: no cover
         }
         bar(a)
 
-    def error():
+    def error() -> None:
 
         try:
             try:

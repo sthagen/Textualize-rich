@@ -40,7 +40,7 @@ class Panel(JupyterMixin):
         renderable: "RenderableType",
         box: Box = ROUNDED,
         *,
-        title: TextType = None,
+        title: Optional[TextType] = None,
         title_align: AlignMethod = "center",
         safe_box: Optional[bool] = None,
         expand: bool = True,
@@ -70,14 +70,14 @@ class Panel(JupyterMixin):
         renderable: "RenderableType",
         box: Box = ROUNDED,
         *,
-        title: TextType = None,
+        title: Optional[TextType] = None,
         title_align: AlignMethod = "center",
         safe_box: Optional[bool] = None,
         style: StyleType = "none",
         border_style: StyleType = "none",
         width: Optional[int] = None,
         padding: PaddingDimensions = (0, 1),
-    ):
+    ) -> "Panel":
         """An alternative constructor that sets expand=False."""
         return cls(
             renderable,
@@ -123,7 +123,7 @@ class Panel(JupyterMixin):
             else min(options.max_width, self.width)
         )
 
-        safe_box: bool = console.safe_box if self.safe_box is None else self.safe_box  # type: ignore
+        safe_box: bool = console.safe_box if self.safe_box is None else self.safe_box
         box = self.box.substitute(options, safe=safe_box)
 
         title_text = self._title
@@ -133,8 +133,8 @@ class Panel(JupyterMixin):
         child_width = (
             width - 2
             if self.expand
-            else Measurement.get(
-                console, options.update_width(width - 2), renderable
+            else console.measure(
+                renderable, options=options.update_width(width - 2)
             ).maximum
         )
         child_height = self.height or options.height or None

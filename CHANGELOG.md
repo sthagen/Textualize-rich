@@ -5,11 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [10.1.1] - Unreleased
+## [10.5.0] - 2021-05-07
+
+### Fixed
+
+- Fixed Pandas objects not pretty printing https://github.com/willmcgugan/rich/issues/1305
+- Fixed https://github.com/willmcgugan/rich/issues/1256
+- Fixed typing with rich.repr.auto decorator
+- Fixed repr error formatting https://github.com/willmcgugan/rich/issues/1326
 
 ### Added
 
-- Added syntax for call, i.e. "Foo(bar)" will highlight Foo.pyth
+- Added new_line_start argument to Console.print
+- Added Segment.divide method
+- Added Segment.split_cells method
+- Added segment.SegmentLines class
+
+## [10.4.0] - 2021-06-18
+
+### Added
+
+- Added Style.meta
+- Added rich.repr.auto decorator
+
+### Fixed
+
+- Fixed error pretty printing classes with special **rich_repr** method
+
+## [10.3.0] - 2021-06-09
+
+### Added
+
+- Added Console.size setter
+- Added Console.width setter
+- Added Console.height setter
+- Added angular style Rich reprs
+- Added an IPython extension. Load via `%load_ext rich`
+
+### Changed
+
+- Changed the logic for retrieving the calling frame in console logs to a faster one for the Python implementations that support it.
+
+## [10.2.2] - 2021-05-19
+
+### Fixed
+
+- Fixed status not rendering console markup https://github.com/willmcgugan/rich/issues/1244
+
+## [10.2.1] - 2021-05-17
+
+### Fixed
+
+- Fixed panel in Markdown exploding https://github.com/willmcgugan/rich/issues/1234
+
+## [10.2.0] - 2021-05-12
+
+### Added
+
+- Added syntax for call, i.e. "Foo(bar)"
+- Added Console.measure as a convenient alias for Measurement.get
+- Added support for pretty printing attrs objects
+- Added mappingproxy to pretty print
+- Added UserDict and UserList support to pretty printer
+
+### Changed
+
+- Changed colorama init to set strip=False
+- Changed highlighter for False, True, None to not match in the middle of a word. i.e. NoneType is no longer highlighted as None
+
+### Fixed
+
+- Fixed initial blank lines removed from Syntax https://github.com/willmcgugan/rich/issues/1214
 
 ## [10.1.0] - 2020-04-03
 
@@ -35,6 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved layout.tree
 - Changed default theme color for repr.number to cyan
 - `__rich_measure__` signature changed to accept ConsoleOptions rather than max_width
+- `text` parameter to rich.spinner.Spinner changed to RenderableType
 
 ### Added
 
@@ -54,6 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed incorrect measurement of Text with new lines and whitespace https://github.com/willmcgugan/rich/issues/1133
 - Made type annotations consistent for various `total` keyword arguments in `rich.progress` and rich.`progress_bar`
 - Disabled Progress no longer displays itself when starting https://github.com/willmcgugan/rich/pull/1125
+- Animations no longer reset when updating rich.status.Status
 
 ## [9.13.0] - 2021-03-06
 

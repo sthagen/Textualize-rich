@@ -1,7 +1,11 @@
-from threading import RLock
+import sys
 from typing import Optional, Tuple
 
-from typing_extensions import Literal
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal  # pragma: no cover
+
 
 from ._loop import loop_last
 from .console import Console, ConsoleOptions, RenderableType, RenderResult

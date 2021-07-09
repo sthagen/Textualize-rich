@@ -2,10 +2,13 @@ import builtins
 import os
 import sys
 from array import array
-from collections import Counter, defaultdict, deque
+from collections import Counter, defaultdict, deque, UserDict, UserList
 from dataclasses import dataclass, fields, is_dataclass
+from inspect import isclass
 from itertools import islice
+import re
 from typing import (
+    DefaultDict,
     TYPE_CHECKING,
     Any,
     Callable,
@@ -17,9 +20,25 @@ from typing import (
     Union,
     Tuple,
 )
+from types import MappingProxyType
 
-from rich.highlighter import ReprHighlighter
+try:
+    import attr as _attr_module
+except ImportError:  # pragma: no cover
+    _attr_module = None  # type: ignore
 
+
+def _is_attr_object(obj: Any) -> bool:
+    """Check if an object was created with attrs module."""
+    return _attr_module is not None and _attr_module.has(type(obj))
+
+
+def _get_attr_fields(obj: Any) -> Iterable["_attr_module.Attribute[Any]"]:
+    """Get fields for an attrs object."""
+    return _attr_module.fields(type(obj)) if _attr_module is not None else []
+
+
+from .highlighter import ReprHighlighter
 from . import get_console
 from ._loop import loop_last
 from ._pick import pick_bool
@@ -40,14 +59,17 @@ if TYPE_CHECKING:
         RenderResult,
     )
 
+# Matches Jupyter's special methods
+_re_jupyter_repr = re.compile(f"^_repr_.+_$")
+
 
 def install(
-    console: "Console" = None,
+    console: Optional["Console"] = None,
     overflow: "OverflowMethod" = "ignore",
     crop: bool = False,
     indent_guides: bool = False,
-    max_length: int = None,
-    max_string: int = None,
+    max_length: Optional[int] = None,
+    max_string: Optional[int] = None,
     expand_all: bool = False,
 ) -> None:
     """Install automatic pretty printing in the Python REPL.
@@ -94,11 +116,10 @@ def install(
         # always skip rich generated jupyter renderables or None values
         if isinstance(value, JupyterRenderable) or value is None:
             return
-        # on jupyter rich display, if using one of the special representations dont use rich
-        if console.is_jupyter and any(attr.startswith("_repr_") for attr in dir(value)):
-            return
-
-        if hasattr(value, "_repr_mimebundle_"):
+        # on jupyter rich display, if using one of the special representations don't use rich
+        if console.is_jupyter and any(
+            _re_jupyter_repr.match(attr) for attr in dir(value)
+        ):
             return
 
         # certain renderables should start on a new line
@@ -118,6 +139,7 @@ def install(
                 margin=12,
             ),
             crop=crop,
+            new_line_start=True,
         )
 
     try:  # pragma: no cover
@@ -154,15 +176,15 @@ class Pretty(JupyterMixin):
     def __init__(
         self,
         _object: Any,
-        highlighter: "HighlighterType" = None,
+        highlighter: Optional["HighlighterType"] = None,
         *,
         indent_size: int = 4,
-        justify: "JustifyMethod" = None,
+        justify: Optional["JustifyMethod"] = None,
         overflow: Optional["OverflowMethod"] = None,
         no_wrap: Optional[bool] = False,
         indent_guides: bool = False,
-        max_length: int = None,
-        max_string: int = None,
+        max_length: Optional[int] = None,
+        max_string: Optional[int] = None,
         expand_all: bool = False,
         margin: int = 0,
         insert_line: bool = False,
@@ -230,7 +252,7 @@ class Pretty(JupyterMixin):
         return Measurement(text_width, text_width)
 
 
-def _get_braces_for_defaultdict(_object: defaultdict) -> Tuple[str, str, str]:
+def _get_braces_for_defaultdict(_object: DefaultDict[Any, Any]) -> Tuple[str, str, str]:
     return (
         f"defaultdict({_object.default_factory!r}, {{",
         "})",
@@ -238,7 +260,7 @@ def _get_braces_for_defaultdict(_object: defaultdict) -> Tuple[str, str, str]:
     )
 
 
-def _get_braces_for_array(_object: array) -> Tuple[str, str, str]:
+def _get_braces_for_array(_object: "array[Any]") -> Tuple[str, str, str]:
     return (f"array({_object.typecode!r}, [", "])", "array({_object.typecode!r})")
 
 
@@ -249,22 +271,26 @@ _BRACES: Dict[type, Callable[[Any], Tuple[str, str, str]]] = {
     Counter: lambda _object: ("Counter({", "})", "Counter()"),
     deque: lambda _object: ("deque([", "])", "deque()"),
     dict: lambda _object: ("{", "}", "{}"),
+    UserDict: lambda _object: ("{", "}", "{}"),
     frozenset: lambda _object: ("frozenset({", "})", "frozenset()"),
     list: lambda _object: ("[", "]", "[]"),
+    UserList: lambda _object: ("[", "]", "[]"),
     set: lambda _object: ("{", "}", "set()"),
     tuple: lambda _object: ("(", ")", "()"),
+    MappingProxyType: lambda _object: ("mappingproxy({", "})", "mappingproxy({})"),
 }
 _CONTAINERS = tuple(_BRACES.keys())
-_MAPPING_CONTAINERS = (dict, os._Environ)
+_MAPPING_CONTAINERS = (dict, os._Environ, MappingProxyType, UserDict)
 
 
 def is_expandable(obj: Any) -> bool:
     """Check if an object may be expanded by pretty print."""
     return (
         isinstance(obj, _CONTAINERS)
-        or (is_dataclass(obj) and not isinstance(obj, type))
-        or hasattr(obj, "__rich_repr__")
-    )
+        or (is_dataclass(obj))
+        or (hasattr(obj, "__rich_repr__"))
+        or _is_attr_object(obj)
+    ) and not isclass(obj)
 
 
 @dataclass
@@ -280,11 +306,7 @@ class Node:
     is_tuple: bool = False
     children: Optional[List["Node"]] = None
     key_separator = ": "
-
-    @property
-    def separator(self) -> str:
-        """Get separator between items."""
-        return "" if self.last else ","
+    separator: str = ", "
 
     def iter_tokens(self) -> Iterable[str]:
         """Generate tokens for this node."""
@@ -303,7 +325,7 @@ class Node:
                     for child in self.children:
                         yield from child.iter_tokens()
                         if not child.last:
-                            yield ", "
+                            yield self.separator
                 yield self.close_brace
             else:
                 yield self.empty
@@ -359,12 +381,14 @@ class Node:
 class _Line:
     """A line in repr output."""
 
+    parent: Optional["_Line"] = None
     is_root: bool = False
     node: Optional[Node] = None
     text: str = ""
     suffix: str = ""
     whitespace: str = ""
     expanded: bool = False
+    last: bool = False
 
     @property
     def expandable(self) -> bool:
@@ -386,34 +410,44 @@ class _Line:
         whitespace = self.whitespace
         assert node.children
         if node.key_repr:
-            yield _Line(
+            new_line = yield _Line(
                 text=f"{node.key_repr}{node.key_separator}{node.open_brace}",
                 whitespace=whitespace,
             )
         else:
-            yield _Line(text=node.open_brace, whitespace=whitespace)
+            new_line = yield _Line(text=node.open_brace, whitespace=whitespace)
         child_whitespace = self.whitespace + " " * indent_size
         tuple_of_one = node.is_tuple and len(node.children) == 1
-        for child in node.children:
-            separator = "," if tuple_of_one else child.separator
+        for last, child in loop_last(node.children):
+            separator = "," if tuple_of_one else node.separator
             line = _Line(
+                parent=new_line,
                 node=child,
                 whitespace=child_whitespace,
                 suffix=separator,
+                last=last and not tuple_of_one,
             )
             yield line
 
         yield _Line(
             text=node.close_brace,
             whitespace=whitespace,
-            suffix="," if (tuple_of_one and not self.is_root) else node.separator,
+            suffix=self.suffix,
+            last=self.last,
         )
 
     def __str__(self) -> str:
-        return f"{self.whitespace}{self.text}{self.node or ''}{self.suffix}"
+        if self.last:
+            return f"{self.whitespace}{self.text}{self.node or ''}"
+        else:
+            return (
+                f"{self.whitespace}{self.text}{self.node or ''}{self.suffix.rstrip()}"
+            )
 
 
-def traverse(_object: Any, max_length: int = None, max_string: int = None) -> Node:
+def traverse(
+    _object: Any, max_length: Optional[int] = None, max_string: Optional[int] = None
+) -> Node:
     """Traverse object and generate a tree.
 
     Args:
@@ -440,7 +474,7 @@ def traverse(_object: Any, max_length: int = None, max_string: int = None) -> No
             try:
                 obj_repr = repr(obj)
             except Exception as error:
-                obj_repr = f"<repr-error '{error}'>"
+                obj_repr = f"<repr-error {str(error)!r}>"
         return obj_repr
 
     visited_ids: Set[int] = set()
@@ -453,7 +487,7 @@ def traverse(_object: Any, max_length: int = None, max_string: int = None) -> No
         py_version = (sys.version_info.major, sys.version_info.minor)
         children: List[Node]
 
-        def iter_rich_args(rich_args) -> Iterable[Union[Any, Tuple[str, Any]]]:
+        def iter_rich_args(rich_args: Any) -> Iterable[Union[Any, Tuple[str, Any]]]:
             for arg in rich_args:
                 if isinstance(arg, tuple):
                     if len(arg) == 3:
@@ -469,31 +503,87 @@ def traverse(_object: Any, max_length: int = None, max_string: int = None) -> No
                 else:
                     yield arg
 
-        if hasattr(obj, "__rich_repr__"):
+        if hasattr(obj, "__rich_repr__") and not isclass(obj):
+            angular = getattr(obj.__rich_repr__, "angular", False)
             args = list(iter_rich_args(obj.__rich_repr__()))
+            class_name = obj.__class__.__name__
 
             if args:
                 children = []
                 append = children.append
-                node = Node(
-                    open_brace=f"{obj.__class__.__name__}(",
-                    close_brace=")",
-                    children=children,
-                    last=root,
-                )
+                if angular:
+                    node = Node(
+                        open_brace=f"<{class_name} ",
+                        close_brace=">",
+                        children=children,
+                        last=root,
+                        separator=" ",
+                    )
+                else:
+                    node = Node(
+                        open_brace=f"{class_name}(",
+                        close_brace=")",
+                        children=children,
+                        last=root,
+                    )
                 for last, arg in loop_last(args):
                     if isinstance(arg, tuple):
                         key, child = arg
                         child_node = _traverse(child)
                         child_node.last = last
                         child_node.key_repr = key
-                        child_node.last = last
                         child_node.key_separator = "="
                         append(child_node)
                     else:
                         child_node = _traverse(arg)
                         child_node.last = last
                         append(child_node)
+            else:
+                node = Node(
+                    value_repr=f"<{class_name}>" if angular else f"{class_name}()",
+                    children=[],
+                    last=root,
+                )
+        elif _is_attr_object(obj):
+            children = []
+            append = children.append
+
+            attr_fields = _get_attr_fields(obj)
+            if attr_fields:
+                node = Node(
+                    open_brace=f"{obj.__class__.__name__}(",
+                    close_brace=")",
+                    children=children,
+                    last=root,
+                )
+
+                def iter_attrs() -> Iterable[
+                    Tuple[str, Any, Optional[Callable[[Any], str]]]
+                ]:
+                    """Iterate over attr fields and values."""
+                    for attr in attr_fields:
+                        if attr.repr:
+                            try:
+                                value = getattr(obj, attr.name)
+                            except Exception as error:
+                                # Can happen, albeit rarely
+                                yield (attr.name, error, None)
+                            else:
+                                yield (
+                                    attr.name,
+                                    value,
+                                    attr.repr if callable(attr.repr) else None,
+                                )
+
+                for last, (name, value, repr_callable) in loop_last(iter_attrs()):
+                    if repr_callable:
+                        child_node = Node(value_repr=str(repr_callable(value)))
+                    else:
+                        child_node = _traverse(value)
+                    child_node.last = last
+                    child_node.key_repr = name
+                    child_node.key_separator = "="
+                    append(child_node)
             else:
                 node = Node(
                     value_repr=f"{obj.__class__.__name__}()", children=[], last=root
@@ -504,7 +594,7 @@ def traverse(_object: Any, max_length: int = None, max_string: int = None) -> No
             and not isinstance(obj, type)
             and (
                 "__create_fn__" in obj.__repr__.__qualname__ or py_version == (3, 6)
-            )  # Check if __repr__ wasn't overriden
+            )  # Check if __repr__ wasn't overridden
         ):
             obj_id = id(obj)
             if obj_id in visited_ids:
@@ -531,7 +621,12 @@ def traverse(_object: Any, max_length: int = None, max_string: int = None) -> No
 
             pop_visited(obj_id)
 
-        elif obj_type in _CONTAINERS:
+        elif isinstance(obj, _CONTAINERS):
+            for container_type in _CONTAINERS:
+                if isinstance(obj, container_type):
+                    obj_type = container_type
+                    break
+
             obj_id = id(obj)
             if obj_id in visited_ids:
                 # Recursion detected
@@ -540,7 +635,9 @@ def traverse(_object: Any, max_length: int = None, max_string: int = None) -> No
 
             open_brace, close_brace, empty = _BRACES[obj_type](obj)
 
-            if obj:
+            if obj_type.__repr__ != type(obj).__repr__:
+                node = Node(value_repr=to_repr(obj), last=root)
+            elif obj:
                 children = []
                 node = Node(
                     open_brace=open_brace,
@@ -589,8 +686,8 @@ def pretty_repr(
     *,
     max_width: int = 80,
     indent_size: int = 4,
-    max_length: int = None,
-    max_string: int = None,
+    max_length: Optional[int] = None,
+    max_string: Optional[int] = None,
     expand_all: bool = False,
 ) -> str:
     """Prettify repr string by expanding on to new lines to fit within a given width.
@@ -622,12 +719,12 @@ def pretty_repr(
 def pprint(
     _object: Any,
     *,
-    console: "Console" = None,
+    console: Optional["Console"] = None,
     indent_guides: bool = True,
-    max_length: int = None,
-    max_string: int = None,
+    max_length: Optional[int] = None,
+    max_string: Optional[int] = None,
     expand_all: bool = False,
-):
+) -> None:
     """A convenience function for pretty printing.
 
     Args:
@@ -656,8 +753,9 @@ def pprint(
 if __name__ == "__main__":  # pragma: no cover
 
     class BrokenRepr:
-        def __repr__(self):
+        def __repr__(self) -> str:
             1 / 0
+            return "this will fail"
 
     d = defaultdict(int)
     d["foo"] = 5

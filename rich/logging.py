@@ -58,14 +58,14 @@ class RichHandler(Handler):
     def __init__(
         self,
         level: Union[int, str] = logging.NOTSET,
-        console: Console = None,
+        console: Optional[Console] = None,
         *,
         show_time: bool = True,
         omit_repeated_times: bool = True,
         show_level: bool = True,
         show_path: bool = True,
         enable_link_path: bool = True,
-        highlighter: Highlighter = None,
+        highlighter: Optional[Highlighter] = None,
         markup: bool = False,
         rich_tracebacks: bool = False,
         tracebacks_width: Optional[int] = None,
@@ -142,7 +142,7 @@ class RichHandler(Handler):
             if self.formatter:
                 record.message = record.getMessage()
                 formatter = self.formatter
-                if hasattr(formatter, "usesTime") and formatter.usesTime():  # type: ignore
+                if hasattr(formatter, "usesTime") and formatter.usesTime():
                     record.asctime = formatter.formatTime(record, formatter.datefmt)
                 message = formatter.formatMessage(record)
 
@@ -210,7 +210,7 @@ if __name__ == "__main__":  # pragma: no cover
     from time import sleep
 
     FORMAT = "%(message)s"
-    # FORMAT = "%(asctime)-15s - %(level) - %(message)s"
+    # FORMAT = "%(asctime)-15s - %(levelname)s - %(message)s"
     logging.basicConfig(
         level="NOTSET",
         format=FORMAT,
@@ -247,7 +247,7 @@ if __name__ == "__main__":  # pragma: no cover
     log.info("POST /admin/ 401 42234")
     log.warning("password was rejected for admin site.")
 
-    def divide():
+    def divide() -> None:
         number = 1
         divisor = 0
         foos = ["foo"] * 100

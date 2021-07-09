@@ -1,7 +1,9 @@
 """Rich text and beautiful formatting in the terminal."""
 
 import os
-from typing import Any, IO, Optional, TYPE_CHECKING
+from typing import IO, TYPE_CHECKING, Any, Optional
+
+from ._extension import load_ipython_extension
 
 __all__ = ["get_console", "reconfigure", "print", "inspect"]
 
@@ -30,8 +32,8 @@ def get_console() -> "Console":
     return _console
 
 
-def reconfigure(*args, **kwargs) -> None:
-    """Reconfigures the global console bu replacing it with another.
+def reconfigure(*args: Any, **kwargs: Any) -> None:
+    """Reconfigures the global console by replacing it with another.
 
     Args:
         console (Console): Replacement console instance.
@@ -42,7 +44,13 @@ def reconfigure(*args, **kwargs) -> None:
     _console.__dict__ = new_console.__dict__
 
 
-def print(*objects: Any, sep=" ", end="\n", file: IO[str] = None, flush: bool = False):
+def print(
+    *objects: Any,
+    sep: str = " ",
+    end: str = "\n",
+    file: Optional[IO[str]] = None,
+    flush: bool = False
+) -> None:
     r"""Print object(s) supplied via positional arguments.
     This function has an identical signature to the built-in print.
     For more advanced features, see the :class:`~rich.console.Console` class.
@@ -63,8 +71,8 @@ def print(*objects: Any, sep=" ", end="\n", file: IO[str] = None, flush: bool = 
 def inspect(
     obj: Any,
     *,
-    console: "Console" = None,
-    title: str = None,
+    console: Optional["Console"] = None,
+    title: Optional[str] = None,
     help: bool = False,
     methods: bool = False,
     docs: bool = True,
@@ -73,7 +81,7 @@ def inspect(
     sort: bool = True,
     all: bool = False,
     value: bool = True
-):
+) -> None:
     """Inspect any Python object.
 
     * inspect(<OBJECT>) to see summarized info.

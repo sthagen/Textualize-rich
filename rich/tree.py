@@ -1,4 +1,4 @@
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Optional, Tuple
 
 from ._loop import loop_first, loop_last
 from .console import Console, ConsoleOptions, RenderableType, RenderResult
@@ -26,8 +26,8 @@ class Tree(JupyterMixin):
         *,
         style: StyleType = "tree",
         guide_style: StyleType = "tree.line",
-        expanded=True,
-        highlight=False,
+        expanded: bool = True,
+        highlight: bool = False,
     ) -> None:
         self.label = label
         self.style = style
@@ -40,10 +40,10 @@ class Tree(JupyterMixin):
         self,
         label: RenderableType,
         *,
-        style: StyleType = None,
-        guide_style: StyleType = None,
-        expanded=True,
-        highlight=False,
+        style: Optional[StyleType] = None,
+        guide_style: Optional[StyleType] = None,
+        expanded: bool = True,
+        highlight: bool = False,
     ) -> "Tree":
         """Add a child tree.
 

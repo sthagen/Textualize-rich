@@ -1,13 +1,20 @@
 from enum import IntEnum
-
+from logging import getLogger
 from typing import Dict, NamedTuple, Optional
 
-from .cells import cell_len, set_cell_size
+from .repr import rich_repr, RichReprResult
+from .cells import cell_len, set_cell_size, get_character_cell_size
 from .style import Style
 
 from itertools import filterfalse
 from operator import attrgetter
-from typing import Iterable, List, Sequence, Union, Tuple
+from typing import cast, Iterable, List, Sequence, Union, Tuple, TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from .console import Console, ConsoleOptions, RenderResult
+
+log = getLogger("rich")
 
 
 class ControlType(IntEnum):
@@ -25,7 +32,7 @@ class ControlType(IntEnum):
     CURSOR_DOWN = 10
     CURSOR_FORWARD = 11
     CURSOR_BACKWARD = 12
-    CURSOR_MOVE_TO_ROW = 13
+    CURSOR_MOVE_TO_COLUMN = 13
     CURSOR_MOVE_TO = 14
     ERASE_IN_LINE = 15
 
@@ -35,6 +42,7 @@ ControlCode = Union[
 ]
 
 
+@rich_repr()
 class Segment(NamedTuple):
     """A piece of text with associated style. Segments are produced by the Console render process and
     are ultimately converted in to strings to be written to the terminal.
@@ -52,12 +60,14 @@ class Segment(NamedTuple):
     control: Optional[Sequence[ControlCode]] = None
     """Optional sequence of control codes."""
 
-    def __repr__(self) -> str:
-        """Simplified repr."""
-        if self.control:
-            return f"Segment({self.text!r}, {self.style!r}, {self.control!r})"
+    def __rich_repr__(self) -> RichReprResult:
+        yield self.text
+        if self.control is None:
+            if self.style is not None:
+                yield self.style
         else:
-            return f"Segment({self.text!r}, {self.style!r})"
+            yield self.style
+            yield self.control
 
     def __bool__(self) -> bool:
         """Check if the segment contains text."""
@@ -73,6 +83,48 @@ class Segment(NamedTuple):
         """Check if the segment contains control codes."""
         return self.control is not None
 
+    def split_cells(self, cut: int) -> Tuple["Segment", "Segment"]:  # type: ignore
+        """Split segment in to two segments at the specified column.
+
+        If the cut point falls in the middle of a 2-cell wide character then it is replaced
+        by two spaces, to preserve the display width of the parent segment.
+
+        Returns:
+            Tuple[Segment, Segment]: Two segments.
+        """
+        text, style, control = self
+        assert cut >= 0
+        _Segment = Segment
+        if cut >= self.cell_length:
+            return self, _Segment("", style, control)
+
+        cell_size = get_character_cell_size
+
+        pos = int((cut / self.cell_length) * len(text))
+
+        before = text[:pos]
+        cell_pos = cell_len(before)
+        if cell_pos == cut:
+            return (
+                _Segment(before, style, control),
+                _Segment(text[pos:], style, control),
+            )
+        while pos < len(text):
+            char = text[pos]
+            pos += 1
+            cell_pos += cell_size(char)
+            before = text[:pos]
+            if cell_pos == cut:
+                return (
+                    _Segment(before, style, control),
+                    _Segment(text[pos:], style, control),
+                )
+            if cell_pos > cut:
+                return (
+                    _Segment(before[: pos - 1] + " ", style, control),
+                    _Segment(" " + text[pos:], style, control),
+                )
+
     @classmethod
     def line(cls) -> "Segment":
         """Make a new line segment."""
@@ -82,8 +134,8 @@ class Segment(NamedTuple):
     def apply_style(
         cls,
         segments: Iterable["Segment"],
-        style: Style = None,
-        post_style: Style = None,
+        style: Optional[Style] = None,
+        post_style: Optional[Style] = None,
     ) -> Iterable["Segment"]:
         """Apply style(s) to an iterable of segments.
 
@@ -97,28 +149,31 @@ class Segment(NamedTuple):
         Returns:
             Iterable[Segments]: A new iterable of segments (possibly the same iterable).
         """
+        result_segments = segments
         if style:
             apply = style.__add__
-            segments = (
+            result_segments = (
                 cls(text, None if control else apply(_style), control)
-                for text, _style, control in segments
+                for text, _style, control in result_segments
             )
         if post_style:
-            segments = (
+            result_segments = (
                 cls(
                     text,
-                    None
-                    if control
-                    else (_style + post_style if _style else post_style),
+                    (
+                        None
+                        if control
+                        else (_style + post_style if _style else post_style)
+                    ),
                     control,
                 )
-                for text, _style, control in segments
+                for text, _style, control in result_segments
             )
-        return segments
+        return result_segments
 
     @classmethod
     def filter_control(
-        cls, segments: Iterable["Segment"], is_control=False
+        cls, segments: Iterable["Segment"], is_control: bool = False
     ) -> Iterable["Segment"]:
         """Filter segments by ``is_control`` attribute.
 
@@ -169,7 +224,7 @@ class Segment(NamedTuple):
         cls,
         segments: Iterable["Segment"],
         length: int,
-        style: Style = None,
+        style: Optional[Style] = None,
         pad: bool = True,
         include_new_lines: bool = True,
     ) -> Iterable[List["Segment"]]:
@@ -213,7 +268,11 @@ class Segment(NamedTuple):
 
     @classmethod
     def adjust_line_length(
-        cls, line: List["Segment"], length: int, style: Style = None, pad: bool = True
+        cls,
+        line: List["Segment"],
+        length: int,
+        style: Optional[Style] = None,
+        pad: bool = True,
     ) -> List["Segment"]:
         """Adjust a line to a given width (cropping or padding as required).
 
@@ -283,8 +342,8 @@ class Segment(NamedTuple):
         cls,
         lines: List[List["Segment"]],
         width: int,
-        height: int = None,
-        style: Style = None,
+        height: Optional[int] = None,
+        style: Optional[Style] = None,
         new_lines: bool = False,
     ) -> List[List["Segment"]]:
         """Set the shape of a list of lines (enclosing rectangle).
@@ -399,36 +458,146 @@ class Segment(NamedTuple):
             else:
                 yield cls(text, None, control)
 
+    @classmethod
+    def divide(
+        cls, segments: Iterable["Segment"], cuts: Iterable[int]
+    ) -> Iterable[List["Segment"]]:
+        """Divides an iterable of segments in to portions.
 
-if __name__ == "__main__":  # pragma: no cover
-    from rich.syntax import Syntax
-    from rich.text import Text
-    from rich.console import Console
+        Args:
+            cuts (Iterable[int]): Cell positions where to divide.
 
-    code = """from rich.console import Console
-console = Console()
-text = Text.from_markup("Hello, [bold magenta]World[/]!")
-console.print(text)"""
+        Yields:
+            [Iterable[List[Segment]]]: An iterable of Segments in List.
+        """
+        split_segments: List["Segment"] = []
+        add_segment = split_segments.append
+        iter_cuts = iter(cuts)
 
-    text = Text.from_markup("Hello, [bold magenta]World[/]!")
+        while True:
+            try:
+                cut = next(iter_cuts)
+            except StopIteration:
+                return []
+            if cut != 0:
+                break
+            yield []
+        pos = 0
 
+        for segment in segments:
+            while segment.text:
+                end_pos = pos + segment.cell_length
+                if end_pos < cut:
+                    add_segment(segment)
+                    pos = end_pos
+                    break
+
+                try:
+                    if end_pos == cut:
+                        add_segment(segment)
+                        yield split_segments[:]
+                        del split_segments[:]
+                        pos = end_pos
+                        break
+                    else:
+                        before, segment = segment.split_cells(cut - pos)
+                        add_segment(before)
+                        yield split_segments[:]
+                        del split_segments[:]
+                        pos = cut
+                finally:
+                    try:
+                        cut = next(iter_cuts)
+                    except StopIteration:
+                        if split_segments:
+                            yield split_segments[:]
+                        return
+        yield []
+
+
+class Segments:
+    """A simple renderable to render an iterable of segments. This class may be useful if
+    you want to print segments outside of a __rich_console__ method.
+
+    Args:
+        segments (Iterable[Segment]): An iterable of segments.
+        new_lines (bool, optional): Add new lines between segments. Defaults to False.
+    """
+
+    def __init__(self, segments: Iterable[Segment], new_lines: bool = False) -> None:
+        self.segments = list(segments)
+        self.new_lines = new_lines
+
+    def __rich_console__(
+        self, console: "Console", options: "ConsoleOptions"
+    ) -> "RenderResult":
+        if self.new_lines:
+            line = Segment.line()
+            for segment in self.segments:
+                yield segment
+                yield line
+        else:
+            yield from self.segments
+
+
+class SegmentLines:
+    def __init__(self, lines: Iterable[List[Segment]], new_lines: bool = False) -> None:
+        """A simple renderable containing a number of lines of segments. May be used as an intermediate
+        in rendering process.
+
+        Args:
+            lines (Iterable[List[Segment]]): Lists of segments forming lines.
+            new_lines (bool, optional): Insert new lines after each line. Defaults to False.
+        """
+        self.lines = list(lines)
+        self.new_lines = new_lines
+
+    def __rich_console__(
+        self, console: "Console", options: "ConsoleOptions"
+    ) -> "RenderResult":
+        if self.new_lines:
+            new_line = Segment.line()
+            for line in self.lines:
+                yield from line
+                yield new_line
+        else:
+            for line in self.lines:
+                yield from line
+
+
+if __name__ == "__main__":
+
+    if __name__ == "__main__":  # pragma: no cover
+        from rich.syntax import Syntax
+        from rich.text import Text
+        from rich.console import Console
+
+        code = """from rich.console import Console
     console = Console()
+    text = Text.from_markup("Hello, [bold magenta]World[/]!")
+    console.print(text)"""
 
-    console.rule("rich.Segment")
-    console.print(
-        "A Segment is the last step in the Rich render process before generating text with ANSI codes."
-    )
-    console.print("\nConsider the following code:\n")
-    console.print(Syntax(code, "python", line_numbers=True))
-    console.print()
-    console.print(
-        "When you call [b]print()[/b], Rich [i]renders[/i] the object in to the the following:\n"
-    )
-    fragments = list(console.render(text))
-    console.print(fragments)
-    console.print()
-    console.print("The Segments are then processed to produce the following output:\n")
-    console.print(text)
-    console.print(
-        "\nYou will only need to know this if you are implementing your own Rich renderables."
-    )
+        text = Text.from_markup("Hello, [bold magenta]World[/]!")
+
+        console = Console()
+
+        console.rule("rich.Segment")
+        console.print(
+            "A Segment is the last step in the Rich render process before generating text with ANSI codes."
+        )
+        console.print("\nConsider the following code:\n")
+        console.print(Syntax(code, "python", line_numbers=True))
+        console.print()
+        console.print(
+            "When you call [b]print()[/b], Rich [i]renders[/i] the object in to the the following:\n"
+        )
+        fragments = list(console.render(text))
+        console.print(fragments)
+        console.print()
+        console.print(
+            "The Segments are then processed to produce the following output:\n"
+        )
+        console.print(text)
+        console.print(
+            "\nYou will only need to know this if you are implementing your own Rich renderables."
+        )

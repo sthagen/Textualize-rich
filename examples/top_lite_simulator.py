@@ -1,7 +1,7 @@
 """Lite simulation of the top linux command."""
-
 import datetime
 import random
+import sys
 import time
 from dataclasses import dataclass
 
@@ -9,7 +9,11 @@ from rich import box
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
-from typing_extensions import Literal
+
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 
 @dataclass

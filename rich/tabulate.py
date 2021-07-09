@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Optional
+from typing import Any, Optional
 
 from rich.console import JustifyMethod
 
@@ -10,9 +10,9 @@ from .table import Table
 
 
 def tabulate_mapping(
-    mapping: Mapping,
-    title: str = None,
-    caption: str = None,
+    mapping: "Mapping[Any, Any]",
+    title: Optional[str] = None,
+    caption: Optional[str] = None,
     title_justify: Optional[JustifyMethod] = None,
     caption_justify: Optional[JustifyMethod] = None,
 ) -> Table:

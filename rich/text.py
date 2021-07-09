@@ -53,7 +53,10 @@ class Span(NamedTuple):
     """Style associated with the span."""
 
     def __repr__(self) -> str:
-        return f"Span({self.start}, {self.end}, {str(self.style)!r})"
+        if isinstance(self.style, Style) and self.style._meta:
+            return f"Span({self.start}, {self.end}, {self.style!r})"
+        else:
+            return f"Span({self.start}, {self.end}, {str(self.style)!r})"
 
     def __bool__(self) -> bool:
         return self.end > self.start
@@ -129,12 +132,12 @@ class Text(JupyterMixin):
         text: str = "",
         style: Union[str, Style] = "",
         *,
-        justify: "JustifyMethod" = None,
-        overflow: "OverflowMethod" = None,
-        no_wrap: bool = None,
+        justify: Optional["JustifyMethod"] = None,
+        overflow: Optional["OverflowMethod"] = None,
+        no_wrap: Optional[bool] = None,
         end: str = "\n",
         tab_size: Optional[int] = 8,
-        spans: List[Span] = None,
+        spans: Optional[List[Span]] = None,
     ) -> None:
         self._text = [strip_control_codes(text)]
         self.style = style
@@ -178,7 +181,7 @@ class Text(JupyterMixin):
         return False
 
     def __getitem__(self, slice: Union[int, slice]) -> "Text":
-        def get_text_at(offset) -> "Text":
+        def get_text_at(offset: int) -> "Text":
             _Span = Span
             text = Text(
                 self.plain[offset],
@@ -215,8 +218,8 @@ class Text(JupyterMixin):
         *,
         style: Union[str, Style] = "",
         emoji: bool = True,
-        justify: "JustifyMethod" = None,
-        overflow: "OverflowMethod" = None,
+        justify: Optional["JustifyMethod"] = None,
+        overflow: Optional["OverflowMethod"] = None,
     ) -> "Text":
         """Create Text instance from markup.
 
@@ -242,8 +245,8 @@ class Text(JupyterMixin):
         text: str,
         style: StyleType = "",
         *,
-        justify: "JustifyMethod" = None,
-        overflow: "OverflowMethod" = None,
+        justify: Optional["JustifyMethod"] = None,
+        overflow: Optional["OverflowMethod"] = None,
     ) -> "Text":
         """Construct a Text instance with a pre-applied styled. A style applied in this way won't be used
         to pad the text when it is justified.
@@ -266,9 +269,9 @@ class Text(JupyterMixin):
         cls,
         *parts: Union[str, "Text", Tuple[str, StyleType]],
         style: Union[str, Style] = "",
-        justify: "JustifyMethod" = None,
-        overflow: "OverflowMethod" = None,
-        no_wrap: bool = None,
+        justify: Optional["JustifyMethod"] = None,
+        overflow: Optional["OverflowMethod"] = None,
+        no_wrap: Optional[bool] = None,
         end: str = "\n",
         tab_size: int = 8,
     ) -> "Text":
@@ -357,7 +360,10 @@ class Text(JupyterMixin):
         return copy_self
 
     def stylize(
-        self, style: Union[str, Style], start: int = 0, end: Optional[int] = None
+        self,
+        style: Union[str, Style],
+        start: int = 0,
+        end: Optional[int] = None,
     ) -> None:
         """Apply a style to the text, or a portion of the text.
 
@@ -412,7 +418,7 @@ class Text(JupyterMixin):
     def highlight_regex(
         self,
         re_highlight: str,
-        style: Union[GetStyleCallable, StyleType] = None,
+        style: Optional[Union[GetStyleCallable, StyleType]] = None,
         *,
         style_prefix: str = "",
     ) -> int:
@@ -506,12 +512,15 @@ class Text(JupyterMixin):
     def __rich_console__(
         self, console: "Console", options: "ConsoleOptions"
     ) -> Iterable[Segment]:
-        tab_size: int = console.tab_size or self.tab_size or 8  # type: ignore
-        justify = cast(
-            "JustifyMethod", self.justify or options.justify or DEFAULT_OVERFLOW
+        tab_size: int = console.tab_size or self.tab_size or 8
+        justify = (
+            cast("JustifyMethod", self.justify) or options.justify or DEFAULT_OVERFLOW
         )
-        overflow = cast(
-            "OverflowMethod", self.overflow or options.overflow or DEFAULT_OVERFLOW
+
+        overflow = (
+            cast("OverflowMethod", self.overflow)
+            or options.overflow
+            or DEFAULT_OVERFLOW
         )
 
         lines = self.wrap(
@@ -635,7 +644,7 @@ class Text(JupyterMixin):
         new_text._length = offset
         return new_text
 
-    def expand_tabs(self, tab_size: int = None) -> None:
+    def expand_tabs(self, tab_size: Optional[int] = None) -> None:
         """Converts tabs to spaces.
 
         Args:
@@ -774,7 +783,7 @@ class Text(JupyterMixin):
                 self.pad_left(excess_space, character)
 
     def append(
-        self, text: Union["Text", str], style: Union[str, "Style"] = None
+        self, text: Union["Text", str], style: Optional[Union[str, "Style"]] = None
     ) -> "Text":
         """Add text with an optional style.
 
@@ -836,7 +845,9 @@ class Text(JupyterMixin):
         self._length += len(text)
         return self
 
-    def append_tokens(self, tokens: Iterable[Tuple[str, Optional[StyleType]]]):
+    def append_tokens(
+        self, tokens: Iterable[Tuple[str, Optional[StyleType]]]
+    ) -> "Text":
         """Append iterable of str and style. Style may be a Style instance or a str style definition.
 
         Args:
@@ -867,7 +878,7 @@ class Text(JupyterMixin):
 
     def split(
         self,
-        separator="\n",
+        separator: str = "\n",
         *,
         include_separator: bool = False,
         allow_blank: bool = False,
@@ -993,10 +1004,10 @@ class Text(JupyterMixin):
         console: "Console",
         width: int,
         *,
-        justify: "JustifyMethod" = None,
-        overflow: "OverflowMethod" = None,
+        justify: Optional["JustifyMethod"] = None,
+        overflow: Optional["OverflowMethod"] = None,
         tab_size: int = 8,
-        no_wrap: bool = None,
+        no_wrap: Optional[bool] = None,
     ) -> Lines:
         """Word wrap the text.
 
@@ -1012,10 +1023,11 @@ class Text(JupyterMixin):
         Returns:
             Lines: Number of lines.
         """
-        wrap_justify = cast("JustifyMethod", justify or self.justify or DEFAULT_JUSTIFY)
-        wrap_overflow = cast(
-            "OverflowMethod", overflow or self.overflow or DEFAULT_OVERFLOW
+        wrap_justify = cast("JustifyMethod", justify or self.justify) or DEFAULT_JUSTIFY
+        wrap_overflow = (
+            cast("OverflowMethod", overflow or self.overflow) or DEFAULT_OVERFLOW
         )
+
         no_wrap = pick_bool(no_wrap, self.no_wrap, False) or overflow == "ignore"
 
         lines = Lines()
@@ -1077,7 +1089,7 @@ class Text(JupyterMixin):
 
     def with_indent_guides(
         self,
-        indent_size: int = None,
+        indent_size: Optional[int] = None,
         *,
         character: str = "│",
         style: StyleType = "dim green",
@@ -1103,7 +1115,7 @@ class Text(JupyterMixin):
         new_lines: List[Text] = []
         add_line = new_lines.append
         blank_lines = 0
-        for line in text.split():
+        for line in text.split(allow_blank=True):
             match = re_indent.match(line.plain)
             if not match or not match.group(2):
                 blank_lines += 1

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from math import ceil
 from threading import Event, RLock, Thread
+from types import TracebackType
 from typing import (
     Any,
     Callable,
@@ -18,19 +19,15 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
 
 from . import filesize, get_console
-from .console import (
-    Console,
-    JustifyMethod,
-    RenderableType,
-    RenderGroup,
-)
-from .jupyter import JupyterMixin
+from .console import Console, JustifyMethod, RenderableType, RenderGroup
 from .highlighter import Highlighter
+from .jupyter import JupyterMixin
 from .live import Live
 from .progress_bar import ProgressBar
 from .spinner import Spinner
@@ -75,19 +72,24 @@ class _TrackThread(Thread):
         self.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         self.done.set()
         self.join()
 
 
 def track(
     sequence: Union[Sequence[ProgressType], Iterable[ProgressType]],
-    description="Working...",
+    description: str = "Working...",
     total: Optional[float] = None,
-    auto_refresh=True,
+    auto_refresh: bool = True,
     console: Optional[Console] = None,
     transient: bool = False,
-    get_time: Callable[[], float] = None,
+    get_time: Optional[Callable[[], float]] = None,
     refresh_per_second: float = 10,
     style: StyleType = "bar.back",
     complete_style: StyleType = "bar.complete",
@@ -153,7 +155,7 @@ class ProgressColumn(ABC):
 
     max_refresh: Optional[float] = None
 
-    def __init__(self, table_column: Column = None) -> None:
+    def __init__(self, table_column: Optional[Column] = None) -> None:
         self._table_column = table_column
         self._renderable_cache: Dict[TaskID, Tuple[float, RenderableType]] = {}
         self._update_time: Optional[float] = None
@@ -171,7 +173,7 @@ class ProgressColumn(ABC):
         Returns:
             RenderableType: Anything renderable (including str).
         """
-        current_time = task.get_time()  # type: ignore
+        current_time = task.get_time()
         if self.max_refresh is not None and not task.completed:
             try:
                 timestamp, renderable = self._renderable_cache[task.id]
@@ -197,7 +199,9 @@ class RenderableColumn(ProgressColumn):
         renderable (RenderableType, optional): Any renderable. Defaults to empty string.
     """
 
-    def __init__(self, renderable: RenderableType = "", *, table_column: Column = None):
+    def __init__(
+        self, renderable: RenderableType = "", *, table_column: Optional[Column] = None
+    ):
         self.renderable = renderable
         super().__init__(table_column=table_column)
 
@@ -221,7 +225,7 @@ class SpinnerColumn(ProgressColumn):
         style: Optional[StyleType] = "progress.spinner",
         speed: float = 1.0,
         finished_text: TextType = " ",
-        table_column: Column = None,
+        table_column: Optional[Column] = None,
     ):
         self.spinner = Spinner(spinner_name, style=style, speed=speed)
         self.finished_text = (
@@ -236,7 +240,7 @@ class SpinnerColumn(ProgressColumn):
         spinner_name: str,
         spinner_style: Optional[StyleType] = "progress.spinner",
         speed: float = 1.0,
-    ):
+    ) -> None:
         """Set a new spinner.
 
         Args:
@@ -246,7 +250,7 @@ class SpinnerColumn(ProgressColumn):
         """
         self.spinner = Spinner(spinner_name, style=spinner_style, speed=speed)
 
-    def render(self, task: "Task") -> Text:
+    def render(self, task: "Task") -> RenderableType:
         text = (
             self.finished_text
             if task.finished
@@ -264,8 +268,8 @@ class TextColumn(ProgressColumn):
         style: StyleType = "none",
         justify: JustifyMethod = "left",
         markup: bool = True,
-        highlighter: Highlighter = None,
-        table_column: Column = None,
+        highlighter: Optional[Highlighter] = None,
+        table_column: Optional[Column] = None,
     ) -> None:
         self.text_format = text_format
         self.justify = justify
@@ -303,7 +307,7 @@ class BarColumn(ProgressColumn):
         complete_style: StyleType = "bar.complete",
         finished_style: StyleType = "bar.finished",
         pulse_style: StyleType = "bar.pulse",
-        table_column: Column = None,
+        table_column: Optional[Column] = None,
     ) -> None:
         self.bar_width = bar_width
         self.style = style
@@ -379,7 +383,9 @@ class DownloadColumn(ProgressColumn):
         binary_units (bool, optional): Use binary units, KiB, MiB etc. Defaults to False.
     """
 
-    def __init__(self, binary_units: bool = False, table_column: Column = None) -> None:
+    def __init__(
+        self, binary_units: bool = False, table_column: Optional[Column] = None
+    ) -> None:
         self.binary_units = binary_units
         super().__init__(table_column=table_column)
 
@@ -467,7 +473,7 @@ class Task:
     """Optional[float]: Time this task was stopped, or None if not stopped."""
 
     finished_speed: Optional[float] = None
-    """Optional[float]: The last speed for a finshed task."""
+    """Optional[float]: The last speed for a finished task."""
 
     _progress: Deque[ProgressSample] = field(
         default_factory=deque, init=False, repr=False
@@ -478,7 +484,7 @@ class Task:
 
     def get_time(self) -> float:
         """float: Get the current time, in seconds."""
-        return self._get_time()  # type: ignore
+        return self._get_time()
 
     @property
     def started(self) -> bool:
@@ -568,19 +574,19 @@ class Progress(JupyterMixin):
     def __init__(
         self,
         *columns: Union[str, ProgressColumn],
-        console: Console = None,
+        console: Optional[Console] = None,
         auto_refresh: bool = True,
         refresh_per_second: float = 10,
         speed_estimate_period: float = 30.0,
         transient: bool = False,
         redirect_stdout: bool = True,
         redirect_stderr: bool = True,
-        get_time: GetTimeCallable = None,
+        get_time: Optional[GetTimeCallable] = None,
         disable: bool = False,
         expand: bool = False,
     ) -> None:
         assert (
-            refresh_per_second is None or refresh_per_second > 0  # type: ignore
+            refresh_per_second is None or refresh_per_second > 0
         ), "refresh_per_second must be > 0"
         self._lock = RLock()
         self.columns = columns or (
@@ -645,7 +651,12 @@ class Progress(JupyterMixin):
         self.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         self.stop()
 
     def track(
@@ -653,7 +664,7 @@ class Progress(JupyterMixin):
         sequence: Union[Iterable[ProgressType], Sequence[ProgressType]],
         total: Optional[float] = None,
         task_id: Optional[TaskID] = None,
-        description="Working...",
+        description: str = "Working...",
         update_period: float = 0.1,
     ) -> Iterable[ProgressType]:
         """Track progress by iterating over a sequence.
@@ -731,10 +742,10 @@ class Progress(JupyterMixin):
         task_id: TaskID,
         *,
         total: Optional[float] = None,
-        completed: float = None,
-        advance: float = None,
-        description: str = None,
-        visible: bool = None,
+        completed: Optional[float] = None,
+        advance: Optional[float] = None,
+        description: Optional[str] = None,
+        visible: Optional[bool] = None,
         refresh: bool = False,
         **fields: Any,
     ) -> None:

@@ -5,9 +5,9 @@ format-check:
 format:
 	black .
 typecheck:
-	mypy -p rich --ignore-missing-imports --warn-unreachable
+	mypy -p rich --strict
 typecheck-report:
-	mypy -p rich --ignore-missing-imports --warn-unreachable --html-report mypy_report
+	mypy -p rich --strict --html-report mypy_report
 .PHONY: docs
 docs:
 	cd docs; make html
