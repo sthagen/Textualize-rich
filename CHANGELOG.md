@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.8.0] - 2020-08-28
+
+### Added
+
+- Added Panel.subtitle
+- Added Panel.subtitle_align
+- Added rich.json.JSON
+- Added rich.print_json and Console.print_json
+
+### Fixed
+
+- Fixed a bug where calling `rich.reconfigure` within a `pytest_configure` hook would lead to a crash
+- Fixed highlight not being passed through options https://github.com/willmcgugan/rich/issues/1404
+
 ## [10.7.0] - 2021-08-05
 
 ### Added

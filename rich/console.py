@@ -1086,7 +1086,6 @@ class Console:
 
         Args:
             status (RenderableType): A status renderable (str or Text typically).
-            console (Console, optional): Console instance to use, or None for global console. Defaults to None.
             spinner (str, optional): Name of spinner animation (see python -m rich.spinner). Defaults to "dots".
             spinner_style (StyleType, optional): Style of spinner. Defaults to "status.spinner".
             speed (float, optional): Speed factor for spinner animation. Defaults to 1.0.
@@ -1584,6 +1583,7 @@ class Console:
                 height=height,
                 no_wrap=no_wrap,
                 markup=markup,
+                highlight=highlight,
             )
 
             new_segments: List[Segment] = []
@@ -1613,6 +1613,19 @@ class Console:
                     buffer_extend(line)
             else:
                 self._buffer.extend(new_segments)
+
+    def print_json(self, json: str, *, indent: int = 4, highlight: bool = True) -> None:
+        """Pretty prints JSON. Output will be valid JSON.
+
+        Args:
+            json (str): A string containing JSON.
+            indent (int, optional): Number of spaces to indent. Defaults to 4.
+            highlight (bool, optional): Enable highlighting of output: Defaults to True.
+        """
+        from rich.json import JSON
+
+        json_renderable = JSON(json, indent=indent, highlight=highlight)
+        self.print(json_renderable)
 
     def update_screen(
         self,

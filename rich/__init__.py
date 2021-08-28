@@ -41,6 +41,7 @@ def reconfigure(*args: Any, **kwargs: Any) -> None:
     from rich.console import Console
 
     new_console = Console(*args, **kwargs)
+    _console = get_console()
     _console.__dict__ = new_console.__dict__
 
 
@@ -66,6 +67,18 @@ def print(
 
     write_console = get_console() if file is None else Console(file=file)
     return write_console.print(*objects, sep=sep, end=end)
+
+
+def print_json(json: str, *, indent: int = 4, highlight: bool = True) -> None:
+    """Pretty prints JSON. Output will be valid JSON.
+
+    Args:
+        json (str): A string containing JSON.
+        indent (int, optional): Number of spaces to indent. Defaults to 4.
+        highlight (bool, optional): Enable highlighting of output: Defaults to True.
+    """
+
+    get_console().print_json(json, indent=indent, highlight=highlight)
 
 
 def inspect(
