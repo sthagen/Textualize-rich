@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [10.9.0] - 2020-08-29
+## [10.10.0] - 2021-09-18
+
+### Added
+
+- Added stdin support to `rich.json`
+
+### Fixed
+
+- Fixed pretty printing of objects with fo magic with **getattr** https://github.com/willmcgugan/rich/issues/1492
+
+## [10.9.0] - 2021-08-29
 
 ### Added
 
@@ -17,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed default indent of JSON to 2 (down from 4)
 - Changed highlighting of JSON keys to new style (bold blue)
 
-## [10.8.0] - 2020-08-28
+## [10.8.0] - 2021-08-28
 
 ### Added
 
@@ -141,7 +151,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed initial blank lines removed from Syntax https://github.com/willmcgugan/rich/issues/1214
 
-## [10.1.0] - 2020-04-03
+## [10.1.0] - 2021-04-03
 
 ### Fixed
 

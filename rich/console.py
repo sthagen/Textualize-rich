@@ -5,11 +5,11 @@ import shutil
 import sys
 import threading
 from abc import ABC, abstractmethod
-from collections import abc
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
 from getpass import getpass
+from html import escape
 from inspect import isclass
 from itertools import islice
 from time import monotonic
@@ -2011,10 +2011,6 @@ class Console:
         append = fragments.append
         _theme = theme or DEFAULT_TERMINAL_THEME
         stylesheet = ""
-
-        def escape(text: str) -> str:
-            """Escape html."""
-            return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
         render_code_format = CONSOLE_HTML_FORMAT if code_format is None else code_format
 
