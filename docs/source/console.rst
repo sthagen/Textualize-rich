@@ -238,11 +238,13 @@ The :meth:`~rich.console.Console.print` method has a boolean ``crop`` argument. 
 Input
 -----
 
-The console class has an :meth:`~rich.console.Console.input` which works in the same way as Python's builtin ``input()`` method, but can use anything that Rich can print as a prompt. For example, here's a colorful prompt with an emoji::
+The console class has an :meth:`~rich.console.Console.input` method which works in the same way as Python's builtin :func:`input` function, but can use anything that Rich can print as a prompt. For example, here's a colorful prompt with an emoji::
 
     from rich.console import Console
     console = Console()
     console.input("What is [i]your[/i] [bold red]name[/]? :smiley: ")
+
+If Python's builtin :mod:`readline` module is previously loaded, elaborate line editing and history features will be available.
 
 Exporting
 ---------
@@ -384,7 +386,7 @@ Interactive mode
 Rich will remove animations such as progress bars and status indicators when not writing to a terminal as you probably don't want to write these out to a text file (for example). You can override this behavior by setting the ``force_interactive`` argument on the constructor. Set it to True to enable animations or False to disable them.
 
 .. note::
-    Some CI systems support ANSI color and style but not anything that moves the cursor or selectively refreshes parts of the terminal. For these you might want to set ``force_terminal`` to ``True`` and ``force_interactve`` to ``False``.
+    Some CI systems support ANSI color and style but not anything that moves the cursor or selectively refreshes parts of the terminal. For these you might want to set ``force_terminal`` to ``True`` and ``force_interactive`` to ``False``.
 
 Environment variables
 ---------------------

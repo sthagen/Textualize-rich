@@ -666,7 +666,7 @@ class Console:
         self.record = record
         self._markup = markup
         self._emoji = emoji
-        self._emoji_variant = emoji_variant
+        self._emoji_variant: Optional[EmojiVariant] = emoji_variant
         self._highlight = highlight
         self.legacy_windows: bool = (
             (detect_legacy_windows() and not self.is_jupyter)
@@ -770,7 +770,7 @@ class Console:
             if color_term in ("truecolor", "24bit"):
                 return ColorSystem.TRUECOLOR
             term = self._environ.get("TERM", "").strip().lower()
-            _term_name, _hyphen, colors = term.partition("-")
+            _term_name, _hyphen, colors = term.rpartition("-")
             color_system = _TERM_COLORS.get(colors, ColorSystem.STANDARD)
             return color_system
 
@@ -899,7 +899,13 @@ class Console:
         if self._force_terminal is not None:
             return self._force_terminal
         isatty: Optional[Callable[[], bool]] = getattr(self.file, "isatty", None)
-        return False if isatty is None else isatty()
+        try:
+            return False if isatty is None else isatty()
+        except ValueError:
+            # in some situation (at the end of a pytest run for example) isatty() can raise
+            # ValueError: I/O operation on closed file
+            # return False because we aren't in a terminal anymore
+            return False
 
     @property
     def is_dumb_terminal(self) -> bool:
@@ -957,7 +963,7 @@ class Console:
         width = width or 80
         height = height or 25
         return ConsoleDimensions(
-            (width - self.legacy_windows) if self._width is None else self._width,
+            ((width - self.legacy_windows) if self._width is None else self._width),
             height if self._height is None else self._height,
         )
 
@@ -1621,6 +1627,12 @@ class Console:
         data: Any = None,
         indent: int = 2,
         highlight: bool = True,
+        skip_keys: bool = False,
+        ensure_ascii: bool = True,
+        check_circular: bool = True,
+        allow_nan: bool = True,
+        default: Optional[Callable[[Any], Any]] = None,
+        sort_keys: bool = False,
     ) -> None:
         """Pretty prints JSON. Output will be valid JSON.
 
@@ -1629,18 +1641,45 @@ class Console:
             data (Any): If json is not supplied, then encode this data.
             indent (int, optional): Number of spaces to indent. Defaults to 2.
             highlight (bool, optional): Enable highlighting of output: Defaults to True.
+            skip_keys (bool, optional): Skip keys not of a basic type. Defaults to False.
+            ensure_ascii (bool, optional): Escape all non-ascii characters. Defaults to False.
+            check_circular (bool, optional): Check for circular references. Defaults to True.
+            allow_nan (bool, optional): Allow NaN and Infinity values. Defaults to True.
+            default (Callable, optional): A callable that converts values that can not be encoded
+                in to something that can be JSON encoded. Defaults to None.
+            sort_keys (bool, optional): Sort dictionary keys. Defaults to False.
         """
         from rich.json import JSON
 
         if json is None:
-            json_renderable = JSON.from_data(data, indent=indent, highlight=highlight)
+            json_renderable = JSON.from_data(
+                data,
+                indent=indent,
+                highlight=highlight,
+                skip_keys=skip_keys,
+                ensure_ascii=ensure_ascii,
+                check_circular=check_circular,
+                allow_nan=allow_nan,
+                default=default,
+                sort_keys=sort_keys,
+            )
         else:
             if not isinstance(json, str):
                 raise TypeError(
                     f"json must be str. Did you mean print_json(data={json!r}) ?"
                 )
-            json_renderable = JSON(json, indent=indent, highlight=highlight)
-        self.print(json_renderable)
+            json_renderable = JSON(
+                json,
+                indent=indent,
+                highlight=highlight,
+                skip_keys=skip_keys,
+                ensure_ascii=ensure_ascii,
+                check_circular=check_circular,
+                allow_nan=allow_nan,
+                default=default,
+                sort_keys=sort_keys,
+            )
+        self.print(json_renderable, soft_wrap=True)
 
     def update_screen(
         self,
@@ -1865,9 +1904,7 @@ class Console:
                         try:
                             if WINDOWS:  # pragma: no cover
                                 # https://bugs.python.org/issue37871
-                                write = self.file.write
-                                for line in text.splitlines(True):
-                                    write(line)
+                                self.file.writelines(text.splitlines(True))
                             else:
                                 self.file.write(text)
                             self.file.flush()
@@ -1912,6 +1949,8 @@ class Console:
         stream: Optional[TextIO] = None,
     ) -> str:
         """Displays a prompt and waits for input from the user. The prompt may contain color / style.
+
+        It works in the same way as Python's builtin :func:`input` function and provides elaborate line editing and history features if Python's builtin :mod:`readline` module is previously loaded.
 
         Args:
             prompt (Union[str, Text]): Text to render in the prompt.

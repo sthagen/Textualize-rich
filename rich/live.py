@@ -159,6 +159,8 @@ class Live(JupyterMixin, RenderHook):
                 # jupyter last refresh must occur after console pop render hook
                 # i am not sure why this is needed
                 self.refresh()
+        if not self.console.is_interactive:
+            return self.console.print()
 
     def __enter__(self) -> "Live":
         self.start(refresh=self._renderable is not None)
@@ -276,7 +278,7 @@ if __name__ == "__main__":  # pragma: no cover
 
     from .align import Align
     from .console import Console
-    from .live import Live
+    from .live import Live as Live
     from .panel import Panel
     from .rule import Rule
     from .syntax import Syntax
