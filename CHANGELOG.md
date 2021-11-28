@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.15.0] - 2021-11-28
+
+### Added
+
+- Added dynamic_progress.py to examples
+- Added ConsoleOptions.update_height
+- Fixed Padding not respecting height
+
+### Changed
+
+- Some optimizations for simple strings (with only single cell widths)
+
+### Fixed
+
+- Fixed issue with progress bar not rendering markup https://github.com/willmcgugan/rich/issues/1721
+- Fixed race condition when exiting Live https://github.com/willmcgugan/rich/issues/1530
+
 ## [10.14.0] - 2021-11-16
 
 ### Fixed
@@ -23,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Allowed `__rich__` to work recursively
 - Allowed Text classes to work with sep in print https://github.com/willmcgugan/rich/issues/1689
+
+### Added
+
+- Added a `rich.text.Text.from_ansi` helper method for handling pre-formatted input strings https://github.com/willmcgugan/rich/issues/1670
 
 ## [10.13.0] - 2021-11-07
 

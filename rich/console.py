@@ -212,6 +212,19 @@ class ConsoleOptions:
         options.min_width = options.max_width = max(0, width)
         return options
 
+    def update_height(self, height: int) -> "ConsoleOptions":
+        """Update the height, and return a copy.
+
+        Args:
+            height (int): New height
+
+        Returns:
+            ~ConsoleOptions: New Console options instance.
+        """
+        options = self.copy()
+        options.max_height = options.height = height
+        return options
+
     def update_dimensions(self, width: int, height: int) -> "ConsoleOptions":
         """Update the width and height, and return a copy.
 
@@ -224,8 +237,7 @@ class ConsoleOptions:
         """
         options = self.copy()
         options.min_width = options.max_width = max(0, width)
-        options.height = height
-        options.max_height = height
+        options.height = options.max_height = height
         return options
 
 
@@ -813,20 +825,25 @@ class Console:
         Args:
             hook (RenderHook): Render hook instance.
         """
-
-        self._render_hooks.append(hook)
+        with self._lock:
+            self._render_hooks.append(hook)
 
     def pop_render_hook(self) -> None:
         """Pop the last renderhook from the stack."""
-        self._render_hooks.pop()
+        with self._lock:
+            self._render_hooks.pop()
 
     def __enter__(self) -> "Console":
         """Own context manager to enter buffer context."""
         self._enter_buffer()
+        if self._live:
+            self._live._lock.acquire()
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         """Exit buffer context."""
+        if self._live:
+            self._live._lock.release()
         self._exit_buffer()
 
     def begin_capture(self) -> None:

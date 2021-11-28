@@ -243,6 +243,44 @@ class Text(JupyterMixin):
         return rendered_text
 
     @classmethod
+    def from_ansi(
+        cls,
+        text: str,
+        *,
+        style: Union[str, Style] = "",
+        justify: Optional["JustifyMethod"] = None,
+        overflow: Optional["OverflowMethod"] = None,
+        no_wrap: Optional[bool] = None,
+        end: str = "\n",
+        tab_size: Optional[int] = 8,
+    ) -> "Text":
+        """Create a Text object from a string containing ANSI escape codes.
+
+        Args:
+            text (str): A string containing escape codes.
+            style (Union[str, Style], optional): Base style for text. Defaults to "".
+            justify (str, optional): Justify method: "left", "center", "full", "right". Defaults to None.
+            overflow (str, optional): Overflow method: "crop", "fold", "ellipsis". Defaults to None.
+            no_wrap (bool, optional): Disable text wrapping, or None for default. Defaults to None.
+            end (str, optional): Character to end text with. Defaults to "\\\\n".
+            tab_size (int): Number of spaces per tab, or ``None`` to use ``console.tab_size``. Defaults to 8.
+        """
+        from .ansi import AnsiDecoder
+
+        joiner = Text(
+            "\n",
+            justify=justify,
+            overflow=overflow,
+            no_wrap=no_wrap,
+            end=end,
+            tab_size=tab_size,
+            style=style,
+        )
+        decoder = AnsiDecoder()
+        result = joiner.join(line for line in decoder.decode(text))
+        return result
+
+    @classmethod
     def styled(
         cls,
         text: str,
