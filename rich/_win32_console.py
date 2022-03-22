@@ -4,7 +4,7 @@ The API that this module wraps is documented at https://docs.microsoft.com/en-us
 """
 import ctypes
 import sys
-from typing import IO, Any, NamedTuple, Type, cast
+from typing import Any
 
 windll: Any = None
 if sys.platform == "win32":
@@ -14,6 +14,7 @@ else:
 
 import time
 from ctypes import Structure, byref, wintypes
+from typing import IO, NamedTuple, Type, cast
 
 from rich.color import ColorSystem
 from rich.style import Style
@@ -302,40 +303,6 @@ def SetConsoleTitle(title: str) -> bool:
     return bool(_SetConsoleTitle(title))
 
 
-_WriteConsole = windll.kernel32.WriteConsoleW
-_WriteConsole.argtypes = [
-    wintypes.HANDLE,
-    wintypes.LPWSTR,
-    wintypes.DWORD,
-    wintypes.LPDWORD,
-    wintypes.LPVOID,
-]
-_WriteConsole.restype = wintypes.BOOL
-
-
-def WriteConsole(std_handle: wintypes.HANDLE, text: str) -> bool:
-    """Write a string of text to the console, starting at the current cursor position
-
-    Args:
-        std_handle (wintypes.HANDLE): A handle to the console input buffer or the console screen buffer.
-        text (str): The text to write.
-
-    Returns:
-        bool: True if the function succeeds, otherwise False.
-    """
-    buffer = wintypes.LPWSTR(text)
-    num_chars_written = wintypes.LPDWORD()
-    return bool(
-        _WriteConsole(
-            std_handle,
-            buffer,
-            wintypes.DWORD(len(text)),
-            num_chars_written,
-            wintypes.LPVOID(None),
-        )
-    )
-
-
 class LegacyWindowsTerm:
     """This class allows interaction with the legacy Windows Console API. It should only be used in the context
     of environments where virtual terminal processing is not available. However, if it is used in a Windows environment,
@@ -367,7 +334,7 @@ class LegacyWindowsTerm:
         15,  # bright white
     ]
 
-    def __init__(self) -> None:
+    def __init__(self, file: "IO[str]") -> None:
         handle = GetStdHandle(STDOUT)
         self._handle = handle
         default_text = GetConsoleScreenBufferInfo(handle).wAttributes
@@ -376,6 +343,10 @@ class LegacyWindowsTerm:
         self._default_fore = default_text & 7
         self._default_back = (default_text >> 4) & 7
         self._default_attrs = self._default_fore | (self._default_back << 4)
+
+        self._file = file
+        self.write = file.write
+        self.flush = file.flush
 
     @property
     def cursor_position(self) -> WindowsCoordinates:
@@ -405,7 +376,8 @@ class LegacyWindowsTerm:
         Args:
             text (str): The text to write to the console
         """
-        WriteConsole(self._handle, text)
+        self.write(text)
+        self.flush()
 
     def write_styled(self, text: str, style: Style) -> None:
         """Write styled text to the terminal.
@@ -576,7 +548,7 @@ if __name__ == "__main__":
 
     console = Console()
 
-    term = LegacyWindowsTerm()
+    term = LegacyWindowsTerm(sys.stdout)
     term.set_title("Win32 Console Examples")
 
     style = Style(color="black", bgcolor="red")

@@ -5,11 +5,13 @@ from logging import getLogger
 from operator import attrgetter
 from typing import (
     TYPE_CHECKING,
+    Any,
     Dict,
     Iterable,
+    Iterator,
     List,
-    NamedTuple,
     Optional,
+    NamedTuple,
     Sequence,
     Tuple,
     Type,
@@ -64,15 +66,25 @@ class Segment(NamedTuple):
     Args:
         text (str): A piece of text.
         style (:class:`~rich.style.Style`, optional): An optional style to apply to the text.
-        control (Sequence[ControlCode], optional): Optional sequence of control codes.
+        control (Tuple[ControlCode], optional): Optional sequence of control codes.
+
+    Attributes:
+        cell_length (int): The cell length of this Segment.
     """
 
-    text: str = ""
-    """Raw text."""
+    text: str
     style: Optional[Style] = None
-    """An optional style."""
     control: Optional[Sequence[ControlCode]] = None
-    """Optional sequence of control codes."""
+
+    @property
+    def cell_length(self) -> int:
+        """The number of terminal cells required to display self.text.
+
+        Returns:
+            int: A number of cells.
+        """
+        text, _style, control = self
+        return 0 if control else cell_len(text)
 
     def __rich_repr__(self) -> Result:
         yield self.text
@@ -86,11 +98,6 @@ class Segment(NamedTuple):
     def __bool__(self) -> bool:
         """Check if the segment contains text."""
         return bool(self.text)
-
-    @property
-    def cell_length(self) -> int:
-        """Get cell length of segment."""
-        return 0 if self.control else cell_len(self.text)
 
     @property
     def is_control(self) -> bool:
