@@ -5,13 +5,14 @@ import platform
 import sys
 from dataclasses import dataclass, field
 from traceback import walk_tb
-from types import FrameType, ModuleType, TracebackType
+from types import ModuleType, TracebackType
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Type, Union
 
 from pygments.lexers import guess_lexer_for_filename
 from pygments.token import Comment, Keyword, Name, Number, Operator, String
 from pygments.token import Text as TextToken
 from pygments.token import Token
+from pygments.util import ClassNotFound
 
 from . import pretty
 from ._loop import loop_last
@@ -130,7 +131,7 @@ def install(
 
     try:  # pragma: no cover
         # if within ipython, use customized traceback
-        ip = get_ipython()  # type: ignore
+        ip = get_ipython()  # type: ignore[name-defined]
         ipy_excepthook_closure(ip)
         return sys.excepthook
     except Exception:
@@ -521,10 +522,10 @@ class Traceback:
             first_line = code[:new_line_index] if new_line_index != -1 else code
             if first_line.startswith("#!") and "python" in first_line.lower():
                 return "python"
-        lexer_name = (
-            cls.LEXERS.get(ext) or guess_lexer_for_filename(filename, code).name
-        )
-        return lexer_name
+        try:
+            return cls.LEXERS.get(ext) or guess_lexer_for_filename(filename, code).name
+        except ClassNotFound:
+            return "text"
 
     @group()
     def _render_stack(self, stack: Stack) -> RenderResult:
@@ -669,7 +670,7 @@ if __name__ == "__main__":  # pragma: no cover
             try:
                 foo(0)
             except:
-                slfkjsldkfj  # type: ignore
+                slfkjsldkfj  # type: ignore[name-defined]
         except:
             console.print_exception(show_locals=True)
 
