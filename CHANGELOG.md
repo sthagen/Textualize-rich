@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Ability to change terminal window title https://github.com/Textualize/rich/pull/2200
+
+### Fixed
+
+- Fall back to `sys.__stderr__` on POSIX systems when trying to get the terminal size (fix issues when Rich is piped to another process)
+- Fixed markup escaping issue https://github.com/Textualize/rich/issues/2187
+- Safari - Box appearing around SVG export https://github.com/Textualize/rich/pull/2201
+- Fixed recursion error in Jupyter progress bars https://github.com/Textualize/rich/issues/2047
+
+### Changed
+
+- Setting `total=None` on progress is now possible, and will display pulsing animation
+
 ## [12.2.0] - 2022-04-05
 
 ### Changed
@@ -18,9 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Progress.open and Progress.wrap_file method to track the progress while reading from a file or file-like object https://github.com/willmcgugan/rich/pull/1759
 - SVG export functionality https://github.com/Textualize/rich/pull/2101
-
-### Added
-
 - Adding Indonesian translation
 
 ### Fixed
