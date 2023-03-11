@@ -5,11 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [13.3.2] - Unreleased
+
+## [13.3.2] - 2023-02-04
 
 ### Fixed
 
+- Reversed `pre` and `code` tags in base HTML format https://github.com/Textualize/rich/pull/2642
+- Fix syntax error when building with nuitka https://github.com/Textualize/rich/pull/2635
 - Fixed pretty printing of empty dataclass https://github.com/Textualize/rich/issues/2819
+- Use `Console(stderr=True)` in `rich.traceback.install` to support io redirection.
+- Fixes superfluous spaces in html output https://github.com/Textualize/rich/issues/2832
+- Fixed duplicate output in Jupyter https://github.com/Textualize/rich/pulls/2804
+- Filter ANSI character-encoding-change codes in `Text.from_ansi` parser
+- Fixes traceback failing when a frame filename is unreadable https://github.com/Textualize/rich/issues/2821
+- Fix for live update rendering console markup https://github.com/Textualize/rich/issues/2726
+
+### Added
+
+- Added Polish README
+
+### Changed
+
+- `rich.progress.track()` will now show the elapsed time after finishing the task https://github.com/Textualize/rich/pull/2659
 
 ## [13.3.1] - 2023-01-28
 
@@ -64,6 +81,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed issue with `locals_max_length` parameter not being respected in Traceback https://github.com/Textualize/rich/issues/2649
 - Handling of broken `fileno` made more robust. Fixes https://github.com/Textualize/rich/issues/2645
 - Fixed missing `fileno` on FileProxy
+
+### Fixed
+
+- Fix type of `spinner_style` argument in `Console.status` https://github.com/Textualize/rich/pull/2613.
 
 ### Changed
 
@@ -1904,6 +1925,7 @@ Major version bump for a breaking change to `Text.stylize signature`, which corr
 
 - First official release, API still to be stabilized
 
+[13.3.2]: https://github.com/textualize/rich/compare/v13.3.1...v13.3.2
 [13.3.1]: https://github.com/textualize/rich/compare/v13.3.0...v13.3.1
 [13.3.0]: https://github.com/textualize/rich/compare/v13.2.0...v13.3.0
 [13.2.0]: https://github.com/textualize/rich/compare/v13.1.0...v13.2.0
