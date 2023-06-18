@@ -5,13 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [13.4.1] - 2023-06-31
+## [13.4.2] - 2023-06-12
+
+### Changed
+
+- Relaxed markdown-it-py dependency
+
+## [13.4.1] - 2023-05-31
 
 ### Fixed
 
 - Fixed typing extensions import in markdown https://github.com/Textualize/rich/issues/2979
 
-## [13.4.0] - 2023-06-31
+## [13.4.0] - 2023-05-31
 
 ### Added
 
@@ -1954,6 +1960,7 @@ Major version bump for a breaking change to `Text.stylize signature`, which corr
 
 - First official release, API still to be stabilized
 
+[13.4.2]: https://github.com/textualize/rich/compare/v13.4.1...v13.4.2  
 [13.4.1]: https://github.com/textualize/rich/compare/v13.4.0...v13.4.1  
 [13.4.0]: https://github.com/textualize/rich/compare/v13.3.5...v13.4.0  
 [13.3.5]: https://github.com/textualize/rich/compare/v13.3.4...v13.3.5
