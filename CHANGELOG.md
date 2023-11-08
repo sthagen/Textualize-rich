@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Adds missing parameters to Panel.fit https://github.com/Textualize/rich/issues/3142
+
+### Fixed
+
+- Ensure font is correctly inherited in exported HTML https://github.com/Textualize/rich/issues/3104
+- Fixed typing for `FloatPrompt`.
+
 ## [13.6.0] - 2023-09-30
 
 ### Added
