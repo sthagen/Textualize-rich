@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+
 ### Changed
 
 - Rich will display tracebacks with finely grained error locations on python 3.11+ https://github.com/Textualize/rich/pull/3486
@@ -15,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed issue with Segment._split_cells https://github.com/Textualize/rich/pull/3506
+- Fix auto detection of terminal size on Windows https://github.com/Textualize/rich/pull/2916
+
+### Added
+
+- Add a new `column` object `IterationSpeedColumn`. https://github.com/Textualize/rich/pull/3332
 
 ## [13.8.1] - 2024-09-10
 
@@ -49,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Running tests in environment with `FORCE_COLOR` or `NO_COLOR` environment variables
 - ansi decoder will now strip problematic private escape sequences (like `\x1b7`) https://github.com/Textualize/rich/pull/3278/
 - Tree's ASCII_GUIDES and TREE_GUIDES constants promoted to class attributes
+- `rich.Text.highlight_regex` now accepts a regular expression object https://github.com/Textualize/rich/pull/3347
 
 ### Added
 
@@ -62,6 +69,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Updated the widths of some characters https://github.com/Textualize/rich/pull/3289
+
+### Added
+
+- Included a `name` attribute to the `Spinner` class https://github.com/Textualize/rich/pull/3359
 
 ## [13.7.0] - 2023-11-15
 
