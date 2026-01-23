@@ -1092,3 +1092,38 @@ def test_append_loop_regression() -> None:
     b = Text("two", "blue")
     b.append_text(b)
     assert b.plain == "twotwo"
+
+
+def test_soft_wrap() -> None:
+    """Regression test for https://github.com/Textualize/rich/issues/3841
+
+    Soft wrap should not strip trailing whitespace.
+
+    """
+    console = Console(color_system="standard", width=80, force_terminal=True)
+    text = Text(" Hello World ", style="white on blue")
+
+    with console.capture() as capture:
+        console.print(text, soft_wrap=True)
+
+    output = capture.get()
+    print(repr(output))
+    expected = "\x1b[37;44m Hello World \x1b[0m\n"
+    assert output == expected
+
+
+def test_soft_wrap_styled() -> None:
+    """Regression test for https://github.com/Textualize/rich/issues/3838
+
+    If soft_wrap is True and a style is set, we don't want to style the new lines.
+    """
+    console = Console(color_system="standard", width=80, force_terminal=True)
+    with console.capture() as capture:
+        console.print("soft wrap is on", style="blue on white", soft_wrap=True)
+        console.print("Next line")
+
+    output = capture.get()
+    print(repr(output))
+    # Background is reset before \n
+    expected = "\x1b[34;47msoft wrap is on\x1b[0m\nNext line\n"
+    assert output == expected
